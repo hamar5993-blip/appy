@@ -34,6 +34,7 @@ export function LegalLayout({ title, updated, children }: {
         </article>
 
         <footer className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pb-8 text-sm">
+          <Link href="/pricing" className="text-muted-fg transition hover:text-primary">Pricing</Link>
           <Link href="/terms" className="text-muted-fg transition hover:text-primary">Terms &amp; Conditions</Link>
           <Link href="/privacy" className="text-muted-fg transition hover:text-primary">Privacy Policy</Link>
           <span className="text-muted-fg">© Easier</span>

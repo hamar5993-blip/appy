@@ -181,6 +181,7 @@ function Footer() {
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-6 gap-y-2 px-4 py-5 text-sm sm:justify-between sm:px-6">
         <span className="text-[13px] text-muted-fg">© {new Date().getFullYear()} Easier</span>
         <nav className="flex gap-5 text-[13px] font-semibold">
+          <Link href="/pricing" className="text-muted-fg transition hover:text-primary">Pricing</Link>
           <Link href="/terms" className="text-muted-fg transition hover:text-primary">Terms &amp; Conditions</Link>
           <Link href="/privacy" className="text-muted-fg transition hover:text-primary">Privacy Policy</Link>
         </nav>

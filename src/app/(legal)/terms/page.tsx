@@ -64,7 +64,31 @@ export default function TermsPage() {
         </p>
       </Section>
 
-      <Section title="7. Termination">
+      <Section title="7. Billing, refunds and cancellations">
+        <p>
+          <strong>Current pricing: Easier is free.</strong> As of the date above, all features — document
+          uploads, summaries, flashcards, quizzes, audio lessons and visual maps — are available at no charge.
+        </p>
+        <p>
+          <strong>Refunds:</strong> because the service is currently free of charge, you are never billed and
+          refund terms do not apply at this time. If we ever introduce paid plans, we will clearly display
+          their prices and billing cycles before you are charged, this section will be updated with a
+          refund policy, and we will ask for your explicit consent (payment authorization) before any
+          charge is made.
+        </p>
+        <p>
+          <strong>Cancellation:</strong> you may stop using Easier at any time. Since nothing has been
+          charged, canceling requires no action or refund request — simply delete your account and
+          documents, which removes your data (see the
+          <a href="/privacy">Privacy Policy</a>).
+        </p>
+        <p>
+          If you believe you were ever charged in error, contact us at{' '}
+          <a href="mailto:billing@easier.app">billing@easier.app</a> and we will resolve it promptly.
+        </p>
+      </Section>
+
+      <Section title="8. Termination">
         <p>
           We may suspend or terminate your account if you violate these terms. You may cancel at any time by
           deleting your account. When your account is deleted, your documents and profile data are removed
@@ -72,7 +96,15 @@ export default function TermsPage() {
         </p>
       </Section>
 
-      <Section title="8. Disclaimer and limitation of liability">
+      <Section title="9. Availability and changes">
+        <p>
+          We work hard to keep Easier available, but we do not guarantee uninterrupted or error-free service.
+          We may add, change or remove features, and may suspend or discontinue the service at any time. These
+          terms may be updated occasionally; continued use after changes means you accept the updated terms.
+        </p>
+      </Section>
+
+      <Section title="10. Disclaimer and limitation of liability">
         <p>
           Easier is provided &quot;as is&quot; without warranties of any kind. To the maximum extent permitted
           by law, Easier and its operators are not liable for any indirect, incidental or consequential
@@ -80,7 +112,7 @@ export default function TermsPage() {
         </p>
       </Section>
 
-      <Section title="9. Contact">
+      <Section title="11. Contact">
         <p>
           Questions about these terms? Contact us at{' '}
           <a href="mailto:support@easier.app">support@easier.app</a>.

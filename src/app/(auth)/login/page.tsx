@@ -48,7 +48,14 @@ export default function LoginPage() {
 
         <div className="rounded-3xl border border-edge bg-surface p-8 shadow-[0_20px_60px_-20px_rgba(99,102,241,.25)]">
           <h1 className="text-lg font-bold">{t.signIn}</h1>
-          <p className="mt-1 mb-6 text-[13px] text-muted-fg">Welcome back — continue your studies.</p>
+          <p className="mt-1 mb-4 text-[13px] text-muted-fg">Welcome back — continue your studies.</p>
+
+          <Link
+            href="/pricing"
+            className="mb-5 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500/10 px-4 py-2 text-[12px] font-bold text-emerald-600 transition hover:bg-emerald-500/15 dark:text-emerald-400"
+          >
+            100% free · no credit card required
+          </Link>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
