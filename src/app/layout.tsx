@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Tajawal } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const tajawal = Tajawal({ subsets: ["arabic"], weight: ["400", "500", "700", "800"], variable: "--font-tajawal" });
@@ -20,7 +19,6 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${tajawal.variable} antialiased`}>
         {children}
-        <Toaster position="bottom-center" richColors />
       </body>
     </html>
   );
