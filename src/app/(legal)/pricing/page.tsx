@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Check, Sparkles } from 'lucide-react';
+import { Check, Sparkles, Mail } from 'lucide-react';
 import { Logo } from '@/components/ui';
 
 export const metadata: Metadata = {
@@ -86,6 +86,13 @@ export default function PricingPage() {
         <footer className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pb-8 text-sm">
           <Link href="/terms" className="text-muted-fg transition hover:text-primary">Terms &amp; Conditions</Link>
           <Link href="/privacy" className="text-muted-fg transition hover:text-primary">Privacy Policy</Link>
+          <a
+            href="mailto:support@easier.app"
+            className="inline-flex items-center gap-1.5 font-semibold text-muted-fg transition hover:text-primary"
+          >
+            <Mail className="h-3.5 w-3.5" />
+            support@easier.app
+          </a>
           <span className="text-muted-fg">© Easier</span>
         </footer>
       </div>

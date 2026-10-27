@@ -149,6 +149,19 @@ export default function SignupPage() {
             {t.signIn}
           </Link>
         </p>
+
+        <footer className="mt-10 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[13px] font-semibold">
+          <Link href="/pricing" className="text-muted-fg transition hover:text-primary">Pricing</Link>
+          <Link href="/terms" className="text-muted-fg transition hover:text-primary">Terms &amp; Conditions</Link>
+          <Link href="/privacy" className="text-muted-fg transition hover:text-primary">Privacy Policy</Link>
+          <a
+            href="mailto:support@easier.app"
+            className="inline-flex items-center gap-1.5 text-muted-fg transition hover:text-primary"
+          >
+            <Mail className="h-3.5 w-3.5" />
+            support@easier.app
+          </a>
+        </footer>
       </div>
     </main>
   );

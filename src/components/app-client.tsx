@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { Spinner, Logo } from '@/components/ui';
 import type { User } from '@/types';
 import { STAGES, type StageKey } from '@/lib/i18n';
-import { Moon, Sun, LogOut, ChevronDown, Plus, Check } from 'lucide-react';
+import { Moon, Sun, LogOut, ChevronDown, Plus, Check, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 function Header() {
@@ -164,9 +164,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Header />
       </Suspense>
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-8 sm:px-6">{children}</main>
-      <Suspense fallback={null}>
-        <Footer />
-      </Suspense>
+      <Footer />
     </div>
   );
 }
@@ -179,13 +177,26 @@ function Footer() {
   return (
     <footer className="border-t border-edge">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-6 gap-y-2 px-4 py-5 text-sm sm:justify-between sm:px-6">
-        <span className="text-[13px] text-muted-fg">© {new Date().getFullYear()} Easier</span>
-        <nav className="flex gap-5 text-[13px] font-semibold">
+        <nav className="flex flex-wrap gap-5 text-[13px] font-semibold">
           <Link href="/pricing" className="text-muted-fg transition hover:text-primary">Pricing</Link>
           <Link href="/terms" className="text-muted-fg transition hover:text-primary">Terms &amp; Conditions</Link>
           <Link href="/privacy" className="text-muted-fg transition hover:text-primary">Privacy Policy</Link>
         </nav>
+        <a
+          href="mailto:support@easier.app"
+          className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-muted-fg transition hover:text-primary"
+        >
+          <Mail className="h-3.5 w-3.5" />
+          support@easier.app
+        </a>
+        <Suspense fallback={null}>
+          <FooterYear />
+        </Suspense>
       </div>
     </footer>
   );
+}
+
+function FooterYear() {
+  return <span className="text-[13px] text-muted-fg">© {new Date().getFullYear()} Easier</span>;
 }

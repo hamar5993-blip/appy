@@ -2,7 +2,7 @@
 
 import { Logo } from '@/components/ui';
 import { useSettings } from '@/components/settings';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Mail } from 'lucide-react';
 import Link from 'next/link';
 
 export function LegalLayout({ title, updated, children }: {
@@ -37,6 +37,13 @@ export function LegalLayout({ title, updated, children }: {
           <Link href="/pricing" className="text-muted-fg transition hover:text-primary">Pricing</Link>
           <Link href="/terms" className="text-muted-fg transition hover:text-primary">Terms &amp; Conditions</Link>
           <Link href="/privacy" className="text-muted-fg transition hover:text-primary">Privacy Policy</Link>
+          <a
+            href="mailto:support@easier.app"
+            className="inline-flex items-center gap-1.5 font-semibold text-muted-fg transition hover:text-primary"
+          >
+            <Mail className="h-3.5 w-3.5" />
+            support@easier.app
+          </a>
           <span className="text-muted-fg">© Easier</span>
         </footer>
       </div>

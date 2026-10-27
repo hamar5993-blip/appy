@@ -9,6 +9,8 @@ import { Button, Input, Label, Logo } from '@/components/ui';
 import { useSettings } from '@/components/settings';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
 
+// Auth pages are part of the public site — footer contact is present here too.
+
 export default function LoginPage() {
   const router = useRouter();
   const { t } = useSettings();
@@ -85,6 +87,19 @@ export default function LoginPage() {
             {t.signUp}
           </Link>
         </p>
+
+        <footer className="mt-10 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[13px] font-semibold">
+          <Link href="/pricing" className="text-muted-fg transition hover:text-primary">Pricing</Link>
+          <Link href="/terms" className="text-muted-fg transition hover:text-primary">Terms &amp; Conditions</Link>
+          <Link href="/privacy" className="text-muted-fg transition hover:text-primary">Privacy Policy</Link>
+          <a
+            href="mailto:support@easier.app"
+            className="inline-flex items-center gap-1.5 text-muted-fg transition hover:text-primary"
+          >
+            <Mail className="h-3.5 w-3.5" />
+            support@easier.app
+          </a>
+        </footer>
       </div>
     </main>
   );
