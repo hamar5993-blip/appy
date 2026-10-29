@@ -76,7 +76,7 @@ export default function SignupPage() {
             href="/pricing"
             className="mb-5 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500/10 px-4 py-2 text-[12px] font-bold text-emerald-600 transition hover:bg-emerald-500/15 dark:text-emerald-400"
           >
-            100% free · see what&apos;s included
+            1 day free trial · then $4.99/month
           </Link>
 
           <form onSubmit={handleSignup} className="space-y-4">

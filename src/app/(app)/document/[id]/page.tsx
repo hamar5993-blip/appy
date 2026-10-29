@@ -265,6 +265,25 @@ function DocumentPageInner() {
     if (saved) setVoiceName(saved);
   }, [docLang]);
 
+  const arabicVoiceAvailable = voices.some((v) => v.lang.toLowerCase().startsWith('ar'));
+
+  const testVoice = () => {
+    const synth = synthRef.current;
+    if (!synth) return;
+    if (speaking) { synth.cancel(); setSpeaking(false); }
+    const u = new SpeechSynthesisUtterance(t.voiceTestLine);
+    u.lang = 'ar-SA';
+    if (chosenVoice) { u.voice = chosenVoice; u.lang = chosenVoice.lang; }
+    else {
+      const ar = voices.find((v) => v.lang.toLowerCase().startsWith('ar'));
+      if (ar) { u.voice = ar; u.lang = ar.lang; }
+    }
+    u.onend = () => setSpeaking(false);
+    u.onerror = () => setSpeaking(false);
+    synth.cancel();
+    synth.speak(u);
+  };
+
   /* Prefer the picked voice, then an exact language match, then anything Arabic/English,
      otherwise let the browser choose by u.lang. */
   const chosenVoice =
@@ -279,6 +298,9 @@ function DocumentPageInner() {
     const synth = synthRef.current;
     if (!synth || !summarized.sentences.length) return;
     if (speaking) { synth.cancel(); setSpeaking(false); return; }
+    if (docLang === 'ar' && voices.length > 0 && !arabicVoiceAvailable) {
+      toast.warning(t.noArabicVoice);
+    }
     /* split into short chunks — many browsers cut long utterances and some
        lose the onend event, and chunking also lets the voice start sooner */
     const text = summarized.sentences.join(' ');
@@ -555,7 +577,22 @@ function DocumentPageInner() {
               <span className="text-[13px] text-muted-fg">{t.noVoices}</span>
             )}
           </div>
-          {voices.length > 0 && <p className="mt-1.5 text-[12.5px] text-muted-fg">{t.voiceHint}</p>}
+          {voices.length > 0 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={testVoice}
+                className="inline-flex items-center gap-1.5 rounded-full border border-edge bg-surface px-3.5 py-1.5 text-[12.5px] font-bold text-muted-fg transition hover:border-primary hover:text-primary"
+              >
+                <Volume2 className="h-3.5 w-3.5" />
+                {t.testVoice}
+              </button>
+            </div>
+          )}
+          {docLang === 'ar' && voices.length > 0 && !arabicVoiceAvailable && (
+            <div className="mt-1.5 rounded-xl border border-amber-400/50 bg-amber-400/10 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-amber-600 dark:text-amber-300">
+              {t.noArabicVoice}
+            </div>
+          )}
           <div className="summary-text mt-6 max-h-[420px] overflow-y-auto rounded-xl border border-edge bg-background p-6 text-[16.5px] leading-[2.1]">
             {summarized.sentences.join(' ') || t.noSummary}
           </div>

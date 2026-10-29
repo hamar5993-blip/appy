@@ -4,6 +4,11 @@ export interface User {
   name: string;
   stage: 'primary' | 'middle' | 'high' | 'university' | 'teacher';
   created_at: string;
+  /* subscription (Waffo) — present once the SQL in supabase/subscriptions.sql is applied */
+  subscription_status?: 'trialing' | 'active' | 'canceling' | 'past_due' | 'canceled' | '';
+  trial_ends_at?: string | null;
+  subscription_ends_at?: string | null;
+  waffo_order_id?: string | null;
 }
 
 export interface Document {

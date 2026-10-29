@@ -6,19 +6,40 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useSettings, stageName } from '@/components/settings';
 import { toast } from 'sonner';
-import { Spinner, Logo } from '@/components/ui';
+import { Spinner, Logo, Button } from '@/components/ui';
 import type { User } from '@/types';
 import { STAGES, type StageKey } from '@/lib/i18n';
-import { Moon, Sun, LogOut, ChevronDown, Plus, Check, Mail } from 'lucide-react';
+import { Moon, Sun, LogOut, ChevronDown, Plus, Check, Mail, Sparkles, Volume2, BrainCircuit, BookOpen, Clock3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-function Header() {
+function Header({ onGate }: { onGate?: (locked: boolean) => void }) {
   const router = useRouter();
   const pathname = usePathname();
   const { t, lang, theme, toggleLang, toggleTheme } = useSettings();
   const [user, setUser] = useState<User | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const gateRef = useRef(onGate);
+  gateRef.current = onGate;
+
+  /* Entitlement check (Waffo subscription / trial) */
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser || !alive) return;
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authUser.id)
+          .single();
+        if (!alive) return;
+        gateRef.current?.(computeLock(profile));
+      } catch { /* never block on a failed entitlement check */ }
+    })();
+    return () => { alive = false; };
+  }, [pathname]);
 
   useEffect(() => {
     let alive = true;
@@ -56,6 +77,7 @@ function Header() {
         setUser(
           profile ?? { id: authUser.id, email: authUser.email ?? '', name: 'Student', stage: 'high', created_at: '' }
         );
+        gateRef.current?.(computeLock(profile));
       } catch {
         /* auth itself failed or timed out — bounce to login rather than spinning */
         if (!alive) return;
@@ -182,13 +204,103 @@ function Header() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const [locked, setLocked] = useState(false);
   return (
     <div className="min-h-screen flex flex-col">
       <Suspense fallback={<HeaderSkeleton />}>
-        <Header />
+        <Header onGate={setLocked} />
       </Suspense>
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-8 sm:px-6">{children}</main>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-8 sm:px-6">
+        {locked ? <Paywall /> : children}
+      </main>
       <Footer />
+    </div>
+  );
+}
+
+/* Grant access unless the profile explicitly says otherwise. If subscription
+   columns are not provisioned yet (SQL not run) the profile carries no status
+   and we deliberately keep everyone in — no accidental lock-out. */
+function computeLock(profile: any): boolean {
+  if (!profile) return false;
+  const status = profile.subscription_status;
+  if (!status) return false;
+  const now = Date.now();
+  const ends = [profile.subscription_ends_at, profile.trial_ends_at]
+    .filter(Boolean)
+    .map((v: string) => new Date(v).getTime())
+    .filter((n: number) => !Number.isNaN(n));
+  if (ends.some((n: number) => n > now)) return false;
+  if (status === 'active' || status === 'canceling') return false;
+  if (status === 'trialing' && !profile.trial_ends_at) return false;
+  return true;
+}
+
+const PaywallIcons = [
+  { icon: Sparkles, key: 'f1' },
+  { icon: Volume2, key: 'f3' },
+  { icon: BrainCircuit, key: 'f4' },
+  { icon: BookOpen, key: 'f2' },
+] as const;
+
+function Paywall() {
+  const { t } = useSettings();
+  const [busy, setBusy] = useState(false);
+
+  const startCheckout = async () => {
+    setBusy(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.url) {
+        window.location.href = json.url;
+        return;
+      }
+      toast.error(`${t.subFailed}${json.error ?? ''}`);
+      setBusy(false);
+    } catch {
+      toast.error(t.subFailed);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="animate-fade-up mx-auto max-w-md py-10">
+      <div className="relative rounded-3xl border-2 border-primary bg-surface p-8 text-center shadow-[0_24px_60px_-20px_rgba(99,102,241,.35)]">
+        <Logo href="/pricing" />
+        <h1 className="mt-5 text-xl font-extrabold">{t.subTitle}</h1>
+        <p className="mt-2 text-[14px] leading-relaxed text-muted-fg">{t.subDesc}</p>
+
+        <div className="mt-6 flex items-end justify-center gap-2">
+          <span className="bg-linear-to-r from-primary to-[var(--primary-2)] bg-clip-text text-5xl font-extrabold tracking-tight text-transparent">$4.99</span>
+          <span className="pb-1.5 text-sm font-semibold text-muted-fg">/ month</span>
+        </div>
+        <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/12 px-3.5 py-1.5 text-[12.5px] font-extrabold text-emerald-600 dark:text-emerald-400">
+          <Clock3 className="h-3.5 w-3.5" />
+          1 day free · then $4.99/month · cancel anytime
+        </span>
+
+        <div className="mt-6 grid grid-cols-2 gap-2 text-[13px] font-semibold">
+          {PaywallIcons.map(({ icon: Icon, key }) => (
+            <div key={key} className="flex items-center gap-2 rounded-xl border border-edge bg-background px-3 py-2.5">
+              <Icon className="h-4 w-4 shrink-0 text-primary" />
+              {t[key]}
+            </div>
+          ))}
+        </div>
+
+        <Button className="mt-7 w-full" size="lg" loading={busy && !!t.subPreparing} onClick={startCheckout}>
+          {busy ? t.subPreparing : t.subStart}
+        </Button>
+        <p className="mt-3 text-[12px] leading-relaxed text-muted-fg">{t.subNote}</p>
+        <Link href="/pricing" className="mt-2 inline-block text-[12.5px] font-bold text-primary hover:underline">
+          Full pricing details →
+        </Link>
+      </div>
     </div>
   );
 }

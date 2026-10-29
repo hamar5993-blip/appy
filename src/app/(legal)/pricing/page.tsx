@@ -1,17 +1,16 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Check, Sparkles, Mail, Clock3, Minus } from 'lucide-react';
+import { Check, Sparkles, Mail, Clock3 } from 'lucide-react';
 import { Logo } from '@/components/ui';
 
 export const metadata: Metadata = {
   title: 'Pricing — Easier',
-  description: 'Easier is currently 100% free. A Pro plan with a 1-day free trial then $4.99/month is on the way — see exactly what you get before paying.',
+  description: 'One simple plan: 1 day free, then $4.99/month. Cancel anytime — keep access until the end of your paid period.',
 };
 
-const FREE_FEATURES = [
+const FEATURES = [
   'Unlimited document uploads (PDF · DOCX · TXT, up to 70 pages)',
-  'Paste any text or article',
-  'Voice dictation (speech-to-text) for pasting',
+  'Paste any text — or dictate it with your voice',
   'Smart summaries — comprehensive, bullet points & laws/key terms',
   'Editable summaries',
   'Auto-generated flashcards with difficulty ratings',
@@ -22,31 +21,22 @@ const FREE_FEATURES = [
   'Personal library for all your documents',
 ];
 
-const PRO_FEATURES = [
-  'Everything in the Free plan',
-  'AI-powered deeper analysis of your documents',
-  'Quizzes and exam simulation',
-  'Priority audio voices & longer lessons',
-  'Early access to new study features',
-  'Priority support',
-];
-
 const FAQ = [
   {
-    q: 'Is Easier really free right now?',
-    a: 'Yes — every feature below is available at no charge, with no credit card and no trial timer.',
+    q: 'How does the free trial work?',
+    a: 'Your 1-day free trial starts as soon as you sign up — no payment is collected during the trial. If you cancel before it ends, you are never charged at all.',
   },
   {
-    q: 'Will I be charged automatically when Pro launches?',
-    a: 'No. Pro will be opt-in: you choose the plan, authorize the payment yourself, and get a 1-day free trial first. Nothing happens without your explicit approval.',
+    q: 'Can I cancel?',
+    a: 'Anytime, from checkout or your account. Your subscription stays active until the end of the period you already paid for.',
   },
   {
-    q: 'What will Pro cost?',
-    a: 'One day free, then $4.99 per month. You will be able to cancel anytime before the trial ends and never pay anything.',
+    q: 'Do you offer a free tier?',
+    a: 'No — Easier is a paid subscription with a 1-day free trial. Everyone gets the full trial day to try every feature before paying.',
   },
   {
-    q: 'Do I need a subscription to keep using the Free plan?',
-    a: 'No. The core study features stay free for everyone — no credit card required.',
+    q: 'Is there a long-term commitment?',
+    a: 'No. It is a simple monthly plan at $4.99/month. Cancel any time — no cancellation fees, no questions asked.',
   },
 ];
 
@@ -66,29 +56,29 @@ export default function PricingPage() {
         </div>
 
         <div className="animate-fade-up text-center">
-          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Simple, honest pricing</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">One simple plan</h1>
           <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-muted-fg">
-            Everything you need to study smarter — free today. A Pro plan is on the way, and you&apos;ll decide if and when to pay.
+            Every feature included. 1 day free, then $4.99/month — cancel anytime.
           </p>
         </div>
 
-        <div className="animate-fade-up mx-auto mt-10 grid gap-6 sm:grid-cols-2">
-          {/* Free plan — active */}
+        <div className="animate-fade-up mx-auto mt-10 max-w-md">
           <div className="relative rounded-3xl border-2 border-primary bg-surface p-7 shadow-[0_24px_60px_-20px_rgba(99,102,241,.35)]">
-            <span className="absolute -top-3 start-6 rounded-full bg-linear-to-r from-primary to-[var(--primary-2)] px-4 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white">
-              Available now
+            <span className="absolute -top-3 start-6 inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-primary to-[var(--primary-2)] px-4 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white">
+              <Clock3 className="h-3 w-3" />
+              1-day free trial included
             </span>
-            <h2 className="mt-2 text-lg font-extrabold">Free Plan</h2>
+            <h2 className="mt-2 text-lg font-extrabold">Easier Subscription</h2>
             <div className="mt-3 flex items-end gap-2">
-              <span className="bg-linear-to-r from-primary to-[var(--primary-2)] bg-clip-text text-5xl font-extrabold tracking-tight text-transparent">$0</span>
-              <span className="pb-1.5 text-sm font-semibold text-muted-fg">forever · no billing cycle</span>
+              <span className="bg-linear-to-r from-primary to-[var(--primary-2)] bg-clip-text text-5xl font-extrabold tracking-tight text-transparent">$4.99</span>
+              <span className="pb-1.5 text-sm font-semibold text-muted-fg">per month · billed monthly</span>
             </div>
             <p className="mt-2 text-[13px] text-muted-fg">
-              No credit card required · nothing expires
+              Nothing is charged during your free trial day. Cancel before it ends and you pay nothing at all.
             </p>
 
             <ul className="mt-6 space-y-2.5">
-              {FREE_FEATURES.map((f) => (
+              {FEATURES.map((f) => (
                 <li key={f} className="flex items-start gap-2.5 text-[14px] leading-snug">
                   <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-emerald-500/15">
                     <Check className="h-3 w-3 text-emerald-500" />
@@ -103,45 +93,8 @@ export default function PricingPage() {
               className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-linear-to-r from-primary to-[var(--primary-2)] py-3 text-sm font-bold text-white shadow-[0_4px_14px_rgba(99,102,241,.35)] transition hover:-translate-y-px hover:shadow-[0_6px_20px_rgba(99,102,241,.45)]"
             >
               <Sparkles className="h-4 w-4" />
-              Get started free
+              Start your 1-day free trial
             </Link>
-          </div>
-
-          {/* Pro — coming soon */}
-          <div className="relative rounded-3xl border border-edge bg-surface/60 p-7">
-            <span className="absolute -top-3 start-6 rounded-full border border-edge bg-surface px-4 py-1 text-[11px] font-extrabold uppercase tracking-wide text-muted-fg">
-              <span className="inline-flex items-center gap-1.5">
-                <Clock3 className="h-3 w-3" />
-                Coming soon
-              </span>
-            </span>
-            <h2 className="mt-2 text-lg font-extrabold">Pro Plan</h2>
-            <div className="mt-3 flex items-end gap-2">
-              <span className="text-[26px] font-extrabold tracking-tight text-muted-fg/80">$4.99</span>
-              <span className="pb-1 text-[13px] font-semibold text-muted-fg/80">per month</span>
-            </div>
-            <p className="mt-2 text-[13px] text-muted-fg">
-              <strong className="font-bold text-text">1 day free trial</strong> first · cancel anytime · only pay after you authorize it yourself
-            </p>
-
-            <ul className="mt-6 space-y-2.5">
-              {PRO_FEATURES.map((f) => (
-                <li key={f} className="flex items-start gap-2.5 text-[14px] leading-snug text-muted-fg">
-                  <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10">
-                    <Check className="h-3 w-3 text-primary" />
-                  </span>
-                  {f}
-                </li>
-              ))}
-            </ul>
-
-            <button
-              disabled
-              className="mt-7 flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-full border border-edge py-3 text-sm font-bold text-muted-fg opacity-70"
-            >
-              <Minus className="h-4 w-4" />
-              Opening soon
-            </button>
           </div>
         </div>
 

@@ -66,24 +66,31 @@ export default function TermsPage() {
 
       <Section title="7. Billing, refunds and cancellations">
         <p>
-          <strong>Current pricing: Easier is free.</strong> As of the date above, all features — document
-          uploads, summaries, flashcards, quizzes, audio lessons and visual maps — are available at no charge.
+          <strong>Subscription &amp; pricing:</strong> Easier is offered as a subscription of{' '}
+          <strong>$4.99 per month</strong>, which includes a <strong>1-day free trial</strong>. Every
+          feature — document uploads, summaries, flashcards, audio lessons and visual maps — is part of
+          the single subscription plan; there is no free tier.
         </p>
         <p>
-          <strong>Refunds:</strong> because the service is currently free of charge, you are never billed and
-          refund terms do not apply at this time. If we ever introduce paid plans, we will clearly display
-          their prices and billing cycles before you are charged, this section will be updated with a
-          refund policy, and we will ask for your explicit consent (payment authorization) before any
-          charge is made.
+          <strong>Trial:</strong> your trial day starts when your account is created. Nothing is charged
+          during the trial. If you cancel before the trial ends, you will not be billed at all.
         </p>
         <p>
-          <strong>Cancellation:</strong> you may stop using Easier at any time. Since nothing has been
-          charged, canceling requires no action or refund request — simply delete your account and
-          documents, which removes your data (see the
-          <a href="/privacy">Privacy Policy</a>).
+          <strong>Renewal:</strong> after the trial, the subscription renews automatically each month at
+          $4.99 unless canceled before the renewal date. Payments are processed by our payment provider
+          (Waffo); we never see or store your card details.
         </p>
         <p>
-          If you believe you were ever charged in error, contact us at{' '}
+          <strong>Cancellation:</strong> you can cancel at any time through your account or by contacting{' '}
+          <a href="mailto:support@easier.app">support@easier.app</a>. Canceling stops future charges, and
+          your access continues until the end of the paid period you have already paid for. If you cancel
+          during the trial day, access ends when the trial ends and you owe nothing.
+        </p>
+        <p>
+          <strong>Refunds:</strong> because you are billed monthly and can cancel at any time before the
+          next renewal, refunds for partial months are generally not owed. Any statutory consumer rights
+          that apply in your jurisdiction are unaffected. If you believe you were charged in error,
+          contact us at{' '}
           <a href="mailto:billing@easier.app">billing@easier.app</a> and we will resolve it promptly.
         </p>
       </Section>
