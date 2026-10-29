@@ -22,22 +22,46 @@ function Header() {
 
   useEffect(() => {
     let alive = true;
-    supabase.auth.getUser().then(async ({ data: { user: authUser } }) => {
-      if (!alive) return;
-      if (!authUser) {
+    (async () => {
+      try {
+        /* Deadline every request: a hanging network call can never leave the
+           header spinner stuck forever. */
+        const withTimeout = <T,>(p: { then: (r: (v: T) => void, e: (e: any) => void) => void }, ms: number): Promise<T> =>
+          new Promise<T>((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error('timeout')), ms);
+            p.then(
+              (v) => { clearTimeout(timer); resolve(v); },
+              (e) => { clearTimeout(timer); reject(e); }
+            );
+          });
+
+        const { data: { user: authUser } } = await withTimeout<{ data: { user: any } }>(supabase.auth.getUser(), 15000);
+        if (!alive) return;
+        if (!authUser) {
+          router.replace('/login');
+          return;
+        }
+        let profile: any = null;
+        try {
+          const res = await withTimeout<any>(
+            supabase.from('profiles').select('*').eq('id', authUser.id).single(),
+            10000
+          );
+          if (!alive) return;
+          profile = res.data;
+        } catch {
+          if (!alive) return;
+        }
+        if (!alive) return;
+        setUser(
+          profile ?? { id: authUser.id, email: authUser.email ?? '', name: 'Student', stage: 'high', created_at: '' }
+        );
+      } catch {
+        /* auth itself failed or timed out — bounce to login rather than spinning */
+        if (!alive) return;
         router.replace('/login');
-        return;
       }
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authUser.id)
-        .single();
-      if (!alive) return;
-      setUser(
-        profile ?? { id: authUser.id, email: authUser.email ?? '', name: 'Student', stage: 'high', created_at: '' }
-      );
-    });
+    })();
     return () => { alive = false; };
   }, [router]);
 

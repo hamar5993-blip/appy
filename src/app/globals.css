@@ -45,6 +45,15 @@
 
 html {
   scroll-behavior: smooth;
+  /* Overall larger text — rem-based Tailwind sizes scale with this */
+  font-size: 17px;
+}
+
+/* Never scroll horizontally on mobile — long words, SVG maps and wide
+   chips must wrap or clip instead of pushing the page wider than the screen. */
+html,
+body {
+  overflow-x: clip;
 }
 
 html[lang="ar"] body {
@@ -58,6 +67,14 @@ body {
   color: var(--text);
   min-height: 100vh;
   transition: background-color .25s ease, color .25s ease;
+  overflow-wrap: anywhere;
+}
+
+/* Reading surfaces: allow breaking long words without cutting the page */
+.prose-safe,
+.s-list,
+.summary-text {
+  overflow-wrap: anywhere;
 }
 
 ::selection {

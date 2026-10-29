@@ -7,7 +7,8 @@ import { useSettings } from '@/components/settings';
 import { Button, Card } from '@/components/ui';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { Upload, FileText, Sparkles, BookOpen, AudioLines, BrainCircuit, SquarePen, ArrowLeft } from 'lucide-react';
+import { getSample } from '@/lib/sample';
+import { Upload, FileText, Sparkles, BookOpen, AudioLines, BrainCircuit, SquarePen, ArrowLeft, FlaskConical } from 'lucide-react';
 
 const FEATURES = [
   { icon: SquarePen, key: 'f1' },
@@ -50,6 +51,25 @@ export default function UploadPage() {
     return result.value;
   };
 
+  /* Hard deadline so the processing overlay can never spin forever. */
+  const budget = <T,>(p: Promise<T>, ms: number, what: string) =>
+    Promise.race([
+      p,
+      new Promise<never>((_, rej) =>
+        setTimeout(
+          () =>
+            rej(
+              new Error(
+                lang === 'ar'
+                  ? `استغرقت المعالجة وقتًا طويلًا جدًا (${what}). تأكد من اتصالك ثم أعد المحاولة.`
+                  : `Processing took too long (${what}). Check your connection and try again.`
+              )
+            ),
+          ms
+        )
+      ),
+    ]);
+
   const saveDocument = async (title: string, text: string, pages: number) => {
     setStep(2);
     setProgress(100);
@@ -81,11 +101,11 @@ export default function UploadPage() {
       let pages = 1;
 
       if (ext === 'pdf') {
-        const r = await extractPdf(file);
+        const r = await budget(extractPdf(file), 120000, 'PDF');
         text = r.text;
         pages = r.pages;
       } else if (ext === 'docx' || ext === 'doc') {
-        text = await extractDocx(file);
+        text = await budget(extractDocx(file), 60000, 'DOCX');
         pages = Math.max(1, Math.round(text.split(/\s+/).length / 300));
       } else if (ext === 'txt' || ext === 'md') {
         text = await file.text();
@@ -102,9 +122,13 @@ export default function UploadPage() {
         return;
       }
 
-      const id = await saveDocument(file.name.replace(/\.[^.]+$/, ''), text, pages);
+      const id = await budget(saveDocument(file.name.replace(/\.[^.]+$/, ''), text, pages), 30000, 'saving');
       toast.success(t.ready);
+      /* Navigate right away, then clear the overlay on a deadline — if the
+         navigation is slow the document is still reachable, and the page can
+         never lock up behind the spinner. */
       router.push(`/document/${id}`);
+      setTimeout(() => setBusy(false), 2500);
     } catch (error: any) {
       toast.error(error.message || 'Something went wrong');
       setBusy(false);
@@ -120,9 +144,26 @@ export default function UploadPage() {
     setBusy(true);
     try {
       const pages = Math.max(1, Math.round(text.split(/\s+/).length / 300));
-      const id = await saveDocument(pasteTitle.trim() || text.split(/\s+/).slice(0, 6).join(' '), text, pages);
+      const id = await budget(saveDocument(pasteTitle.trim() || text.split(/\s+/).slice(0, 6).join(' '), text, pages), 30000, 'saving');
       toast.success(t.ready);
       router.push(`/document/${id}`);
+      setTimeout(() => setBusy(false), 2500);
+    } catch (error: any) {
+      toast.error(error.message || 'Something went wrong');
+      setBusy(false);
+    }
+  };
+
+  const loadSample = async () => {
+    setBusy(true);
+    setProgress(100);
+    setStep(2);
+    try {
+      const sample = getSample(lang === 'ar' ? 'ar' : 'en');
+      const id = await budget(saveDocument(sample.title, sample.text, 1), 30000, 'saving');
+      toast.success(t.sampleLoaded);
+      router.push(`/document/${id}`);
+      setTimeout(() => setBusy(false), 2500);
     } catch (error: any) {
       toast.error(error.message || 'Something went wrong');
       setBusy(false);
@@ -180,7 +221,7 @@ export default function UploadPage() {
               key={m}
               onClick={() => setMode(m)}
               className={cn(
-                'flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-bold transition-all',
+                'flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[14px] font-bold transition-all',
                 mode === m ? 'bg-surface text-primary shadow-sm' : 'text-muted-fg hover:text-text'
               )}
             >
@@ -228,14 +269,14 @@ export default function UploadPage() {
             value={pasteTitle}
             onChange={(e) => setPasteTitle(e.target.value)}
             placeholder={t.pasteTitlePh}
-            className="mb-3 w-full rounded-xl border border-edge bg-background px-4 py-2.5 text-sm font-semibold transition focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
+            className="mb-3 w-full rounded-xl border border-edge bg-background px-4 py-2.5 text-[15px] font-semibold transition focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
           />
           <textarea
             value={pasteText}
             onChange={(e) => setPasteText(e.target.value)}
             placeholder={t.pastePh}
             rows={9}
-            className="w-full resize-y rounded-xl border border-edge bg-background px-4 py-3 text-sm leading-relaxed transition focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
+            className="w-full resize-y rounded-xl border border-edge bg-background px-4 py-3 text-[15px] leading-relaxed transition focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
           />
           <div className="mt-4 flex items-center justify-between">
             <span className={cn('text-xs text-muted-fg', pasteText.length >= 200 && 'font-semibold text-emerald-500')}>
@@ -249,6 +290,20 @@ export default function UploadPage() {
         </Card>
       )}
 
+      {/* Sample study set — explore the app without a file */}
+      <Card className="mx-auto mt-5 flex max-w-2xl flex-col items-center gap-3 p-5 text-center sm:flex-row sm:text-start">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-amber-400/15">
+          <FlaskConical className="h-5 w-5 text-amber-500" />
+        </span>
+        <p className="flex-1 text-[13.5px] leading-relaxed text-muted-fg">
+          {t.sampleDesc}
+        </p>
+        <Button variant="outline" size="sm" onClick={loadSample} className="shrink-0">
+          <Sparkles className="h-4 w-4" />
+          {t.trySample}
+        </Button>
+      </Card>
+
       {/* Feature strip */}
       <div className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {FEATURES.map(({ icon: Icon, key }) => (
@@ -256,7 +311,7 @@ export default function UploadPage() {
             <span className="grid h-11 w-11 place-items-center rounded-xl bg-primary/10">
               <Icon className="h-5 w-5 text-primary" />
             </span>
-            <p className="text-center text-[13px] font-bold leading-snug">{t[key]}</p>
+            <p className="text-center text-[14px] font-bold leading-snug">{t[key]}</p>
           </Card>
         ))}
       </div>
