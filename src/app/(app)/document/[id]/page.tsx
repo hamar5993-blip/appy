@@ -1,6 +1,6 @@
 'use client';
 
-/* Document workspace: AI summary (editable), flashcards, audio tutor and an
+/* Document workspace: AI summary (editable), flashcards and an
    interactive mind map built locally from the document text. */
 
 import { useEffect, useState, useMemo, useRef, Suspense, useCallback } from 'react';
@@ -12,8 +12,8 @@ import type { Document } from '@/types';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { STAGES, type StageKey } from '@/lib/i18n';
-import { ArrowLeft, FileText, Sparkles, SquarePen, Volume2, BrainCircuit,
-  List, Gavel, ScrollText, Download, Play, Pause, RotateCcw, Check, X, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { ArrowLeft, FileText, Sparkles, SquarePen, BrainCircuit,
+  List, Gavel, ScrollText, Download, RotateCcw, Check, X, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 
 /* ---------------- NLP helpers (same engine as original) ---------------- */
 const STOP = {
@@ -59,7 +59,6 @@ type SummaryOverride = { mode: 'comprehensive' | 'bullets' | 'legal'; text: stri
 const TABS = [
   { id: 'summary', icon: FileText, en: 'Summary', ar: 'الملخص' },
   { id: 'cards', icon: Sparkles, en: 'Flashcards', ar: 'البطاقات' },
-  { id: 'audio', icon: Volume2, en: 'Audio', ar: 'الصوت' },
   { id: 'visual', icon: BrainCircuit, en: 'Visual', ar: 'الخريطة' },
 ] as const;
 
@@ -86,19 +85,14 @@ function DocumentPageInner() {
   const [stage, setStage] = useState<StageKey>('high');
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
-  const [tab, setTab] = useState<'summary' | 'cards' | 'audio' | 'visual'>('summary');
+  const [tab, setTab] = useState<'summary' | 'cards' | 'visual'>('summary');
   const [mode, setMode] = useState<'comprehensive' | 'bullets' | 'legal'>('comprehensive');
   const [flipped, setFlipped] = useState<Set<number>>(new Set());
   const [ratings, setRatings] = useState<Record<number, Rating>>({});
-  const [speaking, setSpeaking] = useState(false);
   /* editable summary */
   const [override, setOverride] = useState<SummaryOverride | null>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
-  const synthRef = useRef<SpeechSynthesis | null>(null);
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [voiceName, setVoiceName] = useState('');
-
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -245,92 +239,7 @@ function DocumentPageInner() {
     return cards;
   }, [doc, docLang, tuning.cards]);
 
-  /* audio */
-  useEffect(() => {
-    if (typeof window !== 'undefined') synthRef.current = window.speechSynthesis;
-    return () => { synthRef.current?.cancel(); };
-  }, []);
 
-  /* --- voices: list system voices, auto-pick Arabic, remember choice --- */
-  useEffect(() => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    const load = () => setVoices(window.speechSynthesis.getVoices());
-    load();
-    window.speechSynthesis.addEventListener('voiceschanged', load);
-    return () => window.speechSynthesis.removeEventListener('voiceschanged', load);
-  }, []);
-
-  useEffect(() => {
-    const saved = localStorage.getItem(`easier:voice:${docLang}`);
-    if (saved) setVoiceName(saved);
-  }, [docLang]);
-
-  const arabicVoiceAvailable = voices.some((v) => v.lang.toLowerCase().startsWith('ar'));
-
-  const testVoice = () => {
-    const synth = synthRef.current;
-    if (!synth) return;
-    if (speaking) { synth.cancel(); setSpeaking(false); }
-    const u = new SpeechSynthesisUtterance(t.voiceTestLine);
-    u.lang = 'ar-SA';
-    if (chosenVoice) { u.voice = chosenVoice; u.lang = chosenVoice.lang; }
-    else {
-      const ar = voices.find((v) => v.lang.toLowerCase().startsWith('ar'));
-      if (ar) { u.voice = ar; u.lang = ar.lang; }
-    }
-    u.onend = () => setSpeaking(false);
-    u.onerror = () => setSpeaking(false);
-    synth.cancel();
-    synth.speak(u);
-  };
-
-  /* Prefer the picked voice, then an exact language match, then anything Arabic/English,
-     otherwise let the browser choose by u.lang. */
-  const chosenVoice =
-    voices.find((v) => v.name === voiceName) ||
-    voices.find((v) => v.lang.toLowerCase().replace('_', '-').startsWith(docLang === 'ar' ? 'ar' : 'en')) ||
-    (docLang === 'ar'
-      ? voices.find((v) => v.lang.toLowerCase().startsWith('a') ) // any Arabic-adjacent voice
-      : null) ||
-    null;
-
-  const speak = () => {
-    const synth = synthRef.current;
-    if (!synth || !summarized.sentences.length) return;
-    if (speaking) { synth.cancel(); setSpeaking(false); return; }
-    if (docLang === 'ar' && voices.length > 0 && !arabicVoiceAvailable) {
-      toast.warning(t.noArabicVoice);
-    }
-    /* split into short chunks — many browsers cut long utterances and some
-       lose the onend event, and chunking also lets the voice start sooner */
-    const text = summarized.sentences.join(' ');
-    const pieces: string[] = [];
-    let buf = '';
-    for (const w of text.split(' ')) {
-      if ((buf + ' ' + w).length > 180) { pieces.push(buf.trim()); buf = w; }
-      else buf = (buf + ' ' + w).trim();
-    }
-    if (buf) pieces.push(buf.trim());
-    synth.cancel();
-    pieces.forEach((piece, i) => {
-      const u = new SpeechSynthesisUtterance(piece);
-      u.lang = docLang === 'ar' ? 'ar-SA' : 'en-US';
-      if (chosenVoice) { u.voice = chosenVoice; u.lang = chosenVoice.lang; }
-      u.rate = 0.95;
-      if (i === pieces.length - 1) {
-        u.onend = () => setSpeaking(false);
-        u.onerror = () => setSpeaking(false);
-      }
-      synth.speak(u);
-    });
-    setSpeaking(true);
-  };
-
-  const pickVoice = (name: string) => {
-    setVoiceName(name);
-    try { localStorage.setItem(`easier:voice:${docLang}`, name); } catch { /* ignore */ }
-    if (speaking) { synthRef.current?.cancel(); setSpeaking(false); }
-  };
 
   const ratedCount = Object.keys(ratings).length;
 
@@ -535,68 +444,6 @@ function DocumentPageInner() {
             </div>
           )}
         </div>
-      )}
-
-      {/* --------- Audio tab --------- */}
-      {tab === 'audio' && (
-        <Card className="animate-fade-up mt-5 p-7">
-          <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={speak}>
-              {speaking ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-              {speaking ? (lang === 'ar' ? 'إيقاف' : 'Stop') : (lang === 'ar' ? 'تشغيل' : 'Play')}
-            </Button>
-            <span className="text-[13.5px] text-muted-fg">{docLang === 'ar' ? 'تشغيل الملخص الصوتي' : 'Plays the summary aloud'}</span>
-          </div>
-
-          {/* narrator picker — Arabic voices from the system appear first */}
-          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
-            <label className="flex shrink-0 items-center gap-2 text-[13.5px] font-bold">
-              <Volume2 className="h-4 w-4 text-primary" />
-              {t.voice}
-            </label>
-            {voices.length > 0 ? (
-              <select
-                value={chosenVoice?.name ?? voiceName ?? ''}
-                onChange={(e) => pickVoice(e.target.value)}
-                className="w-full rounded-xl border border-edge bg-background px-3.5 py-2.5 text-[14px] font-semibold transition focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 sm:max-w-md"
-              >
-                <option value="">{t.autoVoice} ({lang === 'ar' ? 'ar-SA' : 'en-US'})</option>
-                {voices
-                  .slice()
-                  .sort((a, b) => {
-                    const rank = (v: SpeechSynthesisVoice) => (v.lang.toLowerCase().startsWith(docLang) ? 0 : v.lang.toLowerCase().startsWith(docLang === 'ar' ? 'en' : 'ar') ? 1 : 2);
-                    return rank(a) - rank(b) || a.name.localeCompare(b.name);
-                  })
-                  .map((v) => (
-                    <option key={v.name} value={v.name}>
-                      {v.name} ({v.lang}){v.localService ? '' : ' · online'}
-                    </option>
-                  ))}
-              </select>
-            ) : (
-              <span className="text-[13px] text-muted-fg">{t.noVoices}</span>
-            )}
-          </div>
-          {voices.length > 0 && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={testVoice}
-                className="inline-flex items-center gap-1.5 rounded-full border border-edge bg-surface px-3.5 py-1.5 text-[12.5px] font-bold text-muted-fg transition hover:border-primary hover:text-primary"
-              >
-                <Volume2 className="h-3.5 w-3.5" />
-                {t.testVoice}
-              </button>
-            </div>
-          )}
-          {docLang === 'ar' && voices.length > 0 && !arabicVoiceAvailable && (
-            <div className="mt-1.5 rounded-xl border border-amber-400/50 bg-amber-400/10 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-amber-600 dark:text-amber-300">
-              {t.noArabicVoice}
-            </div>
-          )}
-          <div className="summary-text mt-6 max-h-[420px] overflow-y-auto rounded-xl border border-edge bg-background p-6 text-[16.5px] leading-[2.1]">
-            {summarized.sentences.join(' ') || t.noSummary}
-          </div>
-        </Card>
       )}
 
       {/* --------- Visual tab (real mind map) --------- */}

@@ -14,7 +14,6 @@ const FEATURES = [
   'Smart summaries — comprehensive, bullet points & laws/key terms',
   'Editable summaries',
   'Auto-generated flashcards with difficulty ratings',
-  'Audio tutor with voice picker (incl. Arabic voices)',
   'Interactive mind maps & visual maps',
   'English & Arabic with full RTL support',
   'Light & dark themes',

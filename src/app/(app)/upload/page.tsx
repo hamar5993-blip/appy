@@ -8,11 +8,11 @@ import { Button, Card } from '@/components/ui';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { getSample } from '@/lib/sample';
-import { Upload, FileText, Sparkles, BookOpen, AudioLines, BrainCircuit, SquarePen, ArrowLeft, FlaskConical, Mic } from 'lucide-react';
+import { Upload, FileText, Sparkles, BookOpen, BrainCircuit, SquarePen, ArrowLeft, FlaskConical, Mic } from 'lucide-react';
 
 const FEATURES = [
   { icon: SquarePen, key: 'f1' },
-  { icon: AudioLines, key: 'f2' },
+  { icon: BookOpen, key: 'f2' },
   { icon: BrainCircuit, key: 'f3' },
   { icon: BookOpen, key: 'f4' },
 ] as const;

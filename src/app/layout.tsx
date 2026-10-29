@@ -9,7 +9,7 @@ const tajawal = Tajawal({ subsets: ["arabic"], weight: ["400", "500", "700", "80
 
 export const metadata: Metadata = {
   title: "Easier — AI Study Companion",
-  description: "Smarter studying starts here — turn your materials into summaries, flashcards, audio lessons and visual maps.",
+  description: "Smarter studying starts here — turn your materials into summaries, flashcards and visual maps.",
   verification: {
     other: { "waffo-verify": "57f2aabec64f0588b6adfdcbeb040743" },
   },

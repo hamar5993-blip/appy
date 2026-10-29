@@ -17,7 +17,7 @@ export default function TermsPage() {
       <Section title="1. What Easier does">
         <p>
           Easier is an AI-powered study companion. You upload documents (PDF, DOCX, TXT) or paste text, and the
-          app generates study materials for you: summaries, flashcards, quizzes, audio lessons and visual maps.
+          app generates study materials for you: summaries, flashcards, quizzes and visual maps.
         </p>
       </Section>
 
@@ -68,7 +68,7 @@ export default function TermsPage() {
         <p>
           <strong>Subscription &amp; pricing:</strong> Easier is offered as a subscription of{' '}
           <strong>$4.99 per month</strong>, which includes a <strong>1-day free trial</strong>. Every
-          feature — document uploads, summaries, flashcards, audio lessons and visual maps — is part of
+          feature — document uploads, summaries, flashcards and visual maps — is part of
           the single subscription plan; there is no free tier.
         </p>
         <p>

@@ -26,7 +26,7 @@ export default function PrivacyPage() {
 
       <Section title="2. How we use your data">
         <ul>
-          <li>To provide the service: extract document text and generate summaries, flashcards, quizzes and audio.</li>
+          <li>To provide the service: extract document text and generate summaries, flashcards and quizzes.</li>
           <li>To operate your account and show your library across devices.</li>
           <li>To personalize results for your educational stage.</li>
           <li>To keep the service secure, prevent abuse and comply with law.</li>
@@ -40,7 +40,6 @@ export default function PrivacyPage() {
           <li><strong>Supabase</strong> — account authentication and database hosting of your documents.</li>
           <li><strong>OpenRouter / AI language models</strong> — document text may be sent to AI models to generate summaries, flashcards and quizzes. We send only the text needed for the feature you request.</li>
           <li><strong>Vercel / hosting &amp; infrastructure</strong> — serving the app and standard security logs.</li>
-          <li><strong>Your browser</strong> — audio playback uses your device&apos;s built-in speech engine; audio is not stored by us.</li>
         </ul>
         <p>
           These providers process data on our behalf under their own privacy and security terms.
