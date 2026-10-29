@@ -96,15 +96,16 @@ export function Spinner({ className }: { className?: string }) {
 
 /* ---------- Logo ---------- */
 export function Logo({ size = 'md', href }: { size?: 'sm' | 'md' | 'lg'; href?: string }) {
+  const badge = size === 'sm' ? 'h-6 w-6 rounded-[7px]' : size === 'lg' ? 'h-10 w-10 rounded-xl' : 'h-7.5 w-7.5 rounded-lg';
+  const spark = size === 'sm' ? 'h-3.5 w-3.5' : size === 'lg' ? 'h-6 w-6' : 'h-4.5 w-4.5';
   const inner = (
-    <span className="inline-flex items-center gap-2 font-extrabold bg-linear-to-r from-primary to-[var(--primary-2)] bg-clip-text text-transparent">
-      <svg viewBox="0 0 24 24" className={cn(size === 'sm' && 'h-5 w-5', size === 'md' && 'h-6 w-6', size === 'lg' && 'h-8 w-8')}>
-        <path
-          fill="var(--primary)"
-          d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z"
-        />
-      </svg>
-      <span className={cn(size === 'sm' && 'text-lg', size === 'md' && 'text-[21px]', size === 'lg' && 'text-3xl')}>
+    <span className="inline-flex items-center gap-2.5 font-extrabold">
+      <span className={cn('grid shrink-0 place-items-center bg-linear-to-br from-primary to-[var(--primary-2)] shadow-[0_3px_10px_-2px_rgba(99,102,241,.5)]', badge)}>
+        <svg viewBox="0 0 24 24" className={spark}>
+          <path fill="#fff" d="M12 4l2.2 5.8L20 12l-5.8 2.2L12 20l-2.2-5.8L4 12l5.8-2.2z" />
+        </svg>
+      </span>
+      <span className={cn('bg-linear-to-r from-primary to-[var(--primary-2)] bg-clip-text text-transparent', size === 'sm' && 'text-lg', size === 'md' && 'text-[21px]', size === 'lg' && 'text-3xl')}>
         Easier
       </span>
     </span>

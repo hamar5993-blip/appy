@@ -96,6 +96,8 @@ function DocumentPageInner() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const synthRef = useRef<SpeechSynthesis | null>(null);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [voiceName, setVoiceName] = useState('');
 
   useEffect(() => {
     let alive = true;
@@ -249,17 +251,63 @@ function DocumentPageInner() {
     return () => { synthRef.current?.cancel(); };
   }, []);
 
+  /* --- voices: list system voices, auto-pick Arabic, remember choice --- */
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const load = () => setVoices(window.speechSynthesis.getVoices());
+    load();
+    window.speechSynthesis.addEventListener('voiceschanged', load);
+    return () => window.speechSynthesis.removeEventListener('voiceschanged', load);
+  }, []);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(`easier:voice:${docLang}`);
+    if (saved) setVoiceName(saved);
+  }, [docLang]);
+
+  /* Prefer the picked voice, then an exact language match, then anything Arabic/English,
+     otherwise let the browser choose by u.lang. */
+  const chosenVoice =
+    voices.find((v) => v.name === voiceName) ||
+    voices.find((v) => v.lang.toLowerCase().replace('_', '-').startsWith(docLang === 'ar' ? 'ar' : 'en')) ||
+    (docLang === 'ar'
+      ? voices.find((v) => v.lang.toLowerCase().startsWith('a') ) // any Arabic-adjacent voice
+      : null) ||
+    null;
+
   const speak = () => {
     const synth = synthRef.current;
     if (!synth || !summarized.sentences.length) return;
     if (speaking) { synth.cancel(); setSpeaking(false); return; }
-    const u = new SpeechSynthesisUtterance(summarized.sentences.join(' '));
-    u.lang = docLang === 'ar' ? 'ar-SA' : 'en-US';
-    u.onend = () => setSpeaking(false);
-    u.onerror = () => setSpeaking(false);
+    /* split into short chunks — many browsers cut long utterances and some
+       lose the onend event, and chunking also lets the voice start sooner */
+    const text = summarized.sentences.join(' ');
+    const pieces: string[] = [];
+    let buf = '';
+    for (const w of text.split(' ')) {
+      if ((buf + ' ' + w).length > 180) { pieces.push(buf.trim()); buf = w; }
+      else buf = (buf + ' ' + w).trim();
+    }
+    if (buf) pieces.push(buf.trim());
     synth.cancel();
-    synth.speak(u);
+    pieces.forEach((piece, i) => {
+      const u = new SpeechSynthesisUtterance(piece);
+      u.lang = docLang === 'ar' ? 'ar-SA' : 'en-US';
+      if (chosenVoice) { u.voice = chosenVoice; u.lang = chosenVoice.lang; }
+      u.rate = 0.95;
+      if (i === pieces.length - 1) {
+        u.onend = () => setSpeaking(false);
+        u.onerror = () => setSpeaking(false);
+      }
+      synth.speak(u);
+    });
     setSpeaking(true);
+  };
+
+  const pickVoice = (name: string) => {
+    setVoiceName(name);
+    try { localStorage.setItem(`easier:voice:${docLang}`, name); } catch { /* ignore */ }
+    if (speaking) { synthRef.current?.cancel(); setSpeaking(false); }
   };
 
   const ratedCount = Object.keys(ratings).length;
@@ -477,6 +525,37 @@ function DocumentPageInner() {
             </Button>
             <span className="text-[13.5px] text-muted-fg">{docLang === 'ar' ? 'تشغيل الملخص الصوتي' : 'Plays the summary aloud'}</span>
           </div>
+
+          {/* narrator picker — Arabic voices from the system appear first */}
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <label className="flex shrink-0 items-center gap-2 text-[13.5px] font-bold">
+              <Volume2 className="h-4 w-4 text-primary" />
+              {t.voice}
+            </label>
+            {voices.length > 0 ? (
+              <select
+                value={chosenVoice?.name ?? voiceName ?? ''}
+                onChange={(e) => pickVoice(e.target.value)}
+                className="w-full rounded-xl border border-edge bg-background px-3.5 py-2.5 text-[14px] font-semibold transition focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 sm:max-w-md"
+              >
+                <option value="">{t.autoVoice} ({lang === 'ar' ? 'ar-SA' : 'en-US'})</option>
+                {voices
+                  .slice()
+                  .sort((a, b) => {
+                    const rank = (v: SpeechSynthesisVoice) => (v.lang.toLowerCase().startsWith(docLang) ? 0 : v.lang.toLowerCase().startsWith(docLang === 'ar' ? 'en' : 'ar') ? 1 : 2);
+                    return rank(a) - rank(b) || a.name.localeCompare(b.name);
+                  })
+                  .map((v) => (
+                    <option key={v.name} value={v.name}>
+                      {v.name} ({v.lang}){v.localService ? '' : ' · online'}
+                    </option>
+                  ))}
+              </select>
+            ) : (
+              <span className="text-[13px] text-muted-fg">{t.noVoices}</span>
+            )}
+          </div>
+          {voices.length > 0 && <p className="mt-1.5 text-[12.5px] text-muted-fg">{t.voiceHint}</p>}
           <div className="summary-text mt-6 max-h-[420px] overflow-y-auto rounded-xl border border-edge bg-background p-6 text-[16.5px] leading-[2.1]">
             {summarized.sentences.join(' ') || t.noSummary}
           </div>
@@ -755,23 +834,23 @@ function FlashCard({ index, card, flipped, rating, onFlip, onRate, lang }: {
 }) {
   return (
     <div className="persp">
-      <div className={cn('preserve-3d relative h-[240px] w-full cursor-pointer', flipped && 'flip-y')} onClick={onFlip}>
+      <div className={cn('preserve-3d relative h-[270px] w-full cursor-pointer', flipped && 'flip-y')} onClick={onFlip}>
         {/* Front */}
         <div className="backface-hidden absolute inset-0 flex flex-col rounded-2xl border border-edge bg-primary/[.045] p-4">
-          <span className="w-fit rounded-full bg-primary/12 px-2.5 py-1 text-[11px] font-extrabold text-primary">{index + 1}</span>
-          <p className="mt-3 flex-1 overflow-y-auto text-[15.5px] font-semibold leading-relaxed">{card.q}</p>
-          <span className="text-[12px] text-muted-fg">⟳ {lang === 'ar' ? 'انقر للقلب' : 'Tap to flip'}</span>
+          <span className="w-fit rounded-full bg-primary/12 px-2.5 py-1 text-[12.5px] font-extrabold text-primary">{index + 1}</span>
+          <p className="mt-3 flex-1 overflow-y-auto text-[17.5px] font-semibold leading-relaxed">{card.q}</p>
+          <span className="text-[13px] text-muted-fg">⟳ {lang === 'ar' ? 'انقر للقلب' : 'Tap to flip'}</span>
         </div>
         {/* Back */}
         <div className="backface-hidden flip-y absolute inset-0 flex flex-col rounded-2xl border border-edge bg-surface p-4" onClick={(e) => e.stopPropagation()}>
-          <p className="flex-1 overflow-y-auto text-[15px] leading-relaxed text-muted-fg">{card.a}</p>
+          <p className="flex-1 overflow-y-auto text-[16.5px] leading-relaxed text-muted-fg">{card.a}</p>
           <div className="mt-3 flex gap-1.5" onClick={(e) => e.stopPropagation()}>
             {(['hard', 'medium', 'easy'] as const).map((r) => (
               <button
                 key={r}
                 onClick={(e) => { e.stopPropagation(); onRate(r); }}
                 className={cn(
-                  'flex-1 rounded-lg border px-1 py-1.5 text-[11.5px] font-bold transition',
+                  'flex-1 rounded-lg border px-1 py-2 text-[13px] font-bold transition',
                   rating === r
                     ? r === 'hard' ? 'border-transparent bg-red-500 text-white'
                     : r === 'medium' ? 'border-transparent bg-amber-500 text-white'

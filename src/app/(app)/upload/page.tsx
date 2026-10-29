@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useSettings } from '@/components/settings';
@@ -8,7 +8,7 @@ import { Button, Card } from '@/components/ui';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { getSample } from '@/lib/sample';
-import { Upload, FileText, Sparkles, BookOpen, AudioLines, BrainCircuit, SquarePen, ArrowLeft, FlaskConical } from 'lucide-react';
+import { Upload, FileText, Sparkles, BookOpen, AudioLines, BrainCircuit, SquarePen, ArrowLeft, FlaskConical, Mic } from 'lucide-react';
 
 const FEATURES = [
   { icon: SquarePen, key: 'f1' },
@@ -28,6 +28,10 @@ export default function UploadPage() {
   const [pasteTitle, setPasteTitle] = useState('');
   const [pasteText, setPasteText] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [listening, setListening] = useState(false);
+  const recogRef = useRef<any>(null);
+  const baseTextRef = useRef('');
+  const accumRef = useRef('');
 
   const extractPdf = async (file: File) => {
     const pdfjsLib = await import('pdfjs-dist');
@@ -170,6 +174,53 @@ export default function UploadPage() {
     }
   };
 
+  /* ---------- speech-to-text dictation (Web Speech API) ---------- */
+  const toggleDictation = () => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      toast.error(t.micUnsupported);
+      return;
+    }
+    if (listening) {
+      recogRef.current?.stop();
+      setListening(false);
+      return;
+    }
+    setMode('paste');
+    const r = new SR();
+    r.lang = lang === 'ar' ? 'ar-SA' : 'en-US';
+    r.continuous = true;
+    r.interimResults = false;
+    baseTextRef.current = pasteText;
+    accumRef.current = '';
+    r.onresult = (e: any) => {
+      let finalText = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
+      }
+      if (finalText.trim()) {
+        accumRef.current = (accumRef.current ? accumRef.current + ' ' : '') + finalText.trim();
+        setPasteText(
+          (baseTextRef.current ? baseTextRef.current + '\n\n' : '') + accumRef.current
+        );
+      }
+    };
+    r.onend = () => setListening(false);
+    r.onerror = (e: any) => {
+      setListening(false);
+      if (e?.error === 'not-allowed') toast.error(lang === 'ar' ? 'تم رفض إذن الميكروفون.' : 'Microphone permission was denied.');
+    };
+    try {
+      r.start();
+      recogRef.current = r;
+      setListening(true);
+    } catch {
+      toast.error(t.micUnsupported);
+    }
+  };
+
+  useEffect(() => () => { try { recogRef.current?.stop(); } catch { /* ignore */ } }, []);
+
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragging(false);
@@ -271,13 +322,33 @@ export default function UploadPage() {
             placeholder={t.pasteTitlePh}
             className="mb-3 w-full rounded-xl border border-edge bg-background px-4 py-2.5 text-[15px] font-semibold transition focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
           />
-          <textarea
-            value={pasteText}
-            onChange={(e) => setPasteText(e.target.value)}
-            placeholder={t.pastePh}
-            rows={9}
-            className="w-full resize-y rounded-xl border border-edge bg-background px-4 py-3 text-[15px] leading-relaxed transition focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
-          />
+          <div className="relative">
+            <textarea
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              placeholder={t.pastePh}
+              rows={9}
+              className="w-full resize-y rounded-xl border border-edge bg-background px-4 py-3 pe-14 text-[15px] leading-relaxed transition focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
+            />
+            <button
+              type="button"
+              onClick={toggleDictation}
+              title={t.micDictate}
+              className={cn(
+                'absolute end-2.5 top-2.5 grid h-9 w-9 place-items-center rounded-xl border transition',
+                listening
+                  ? 'border-red-400 bg-red-500/10 text-red-500'
+                  : 'border-edge bg-surface text-muted-fg hover:border-primary hover:text-primary'
+              )}
+            >
+              <Mic className={cn('h-4.5 w-4.5', listening && 'animate-pulse')} />
+            </button>
+            {listening && (
+              <span className="absolute bottom-2.5 end-3 text-[12px] font-bold text-red-500 animate-pulse">
+                {t.listening}
+              </span>
+            )}
+          </div>
           <div className="mt-4 flex items-center justify-between">
             <span className={cn('text-xs text-muted-fg', pasteText.length >= 200 && 'font-semibold text-emerald-500')}>
               {pasteText.length.toLocaleString()} / 200+

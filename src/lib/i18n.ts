@@ -80,6 +80,13 @@ export const I18N = {
     f4: 'Visual Maps',
     pagesLabel: 'pages',
     wordsLabel: 'words',
+    voice: 'Voice',
+    autoVoice: 'Automatic',
+    voiceHint: 'Pick the narrator — Arabic voices from your system appear here.',
+    noVoices: 'No voices detected. Your browser/system may not have text-to-speech voices installed.',
+    micDictate: 'Dictate',
+    listening: 'Listening…',
+    micUnsupported: 'Voice input is not supported in this browser.',
   },
   ar: {
     appTagline: 'ابدأ الدراسة بذكاء — حوِّل مذاكرك إلى ملخصات وبطاقات مراجعة ودروس صوتية.',
@@ -152,6 +159,13 @@ export const I18N = {
     f4: 'خرائط بصرية',
     pagesLabel: 'صفحة',
     wordsLabel: 'كلمة',
+    voice: 'الصوت',
+    autoVoice: 'تلقائي',
+    voiceHint: 'اختر صوت الرواية — تظهر هنا الأصوات العربية من نظامك.',
+    noVoices: 'لم يتم العثور على أصوات. قد لا يحتوي متصفحك أو نظامك على أصوات نطق مثبتة.',
+    micDictate: 'إملاء صوتي',
+    listening: 'جارٍ الاستماع…',
+    micUnsupported: 'الإدخال الصوتي غير مدعوم في هذا المتصفح.',
   },
 } as const;
 
