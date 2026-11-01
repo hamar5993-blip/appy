@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': req.nextUrl.origin,
-          'X-Title': 'Easier — Homework solver',
+          'X-Title': 'Easier Homework Solver',
         },
         body: JSON.stringify({
           model: MODEL,
@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
             { role: 'user', content: userContent },
           ],
           temperature: 0.25,
-          max_tokens: 2500,
+          max_tokens: 4000,
         }),
         signal: controller.signal,
       });
@@ -172,7 +172,9 @@ export async function POST(req: NextRequest) {
               .join('')
           : '';
       if (!answer.trim()) {
-        console.error('[homework] OpenRouter returned an empty answer');
+        console.error(
+          `[homework] OpenRouter returned an empty answer (finish_reason: ${json?.choices?.[0]?.finish_reason ?? 'unknown'})`
+        );
         return NextResponse.json({ error: 'The AI returned an empty answer', code: 'provider' }, { status: 502 });
       }
 

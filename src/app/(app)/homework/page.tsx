@@ -345,7 +345,7 @@ export default function HomeworkPage() {
         const serverMessage = typeof json?.error === 'string' ? json.error : '';
         const friendly = describeError(res.status, json?.code);
         setError(friendly);
-        setErrorDetail(serverMessage && serverMessage !== friendly ? serverMessage : '');
+        setErrorDetail(serverMessage || (json ? '' : `HTTP ${res.status}`));
         return;
       }
 
