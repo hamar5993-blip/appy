@@ -267,15 +267,15 @@ function DocumentPageInner() {
     <div className="animate-fade-up">
       {/* Doc header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3.5">
+        <div className="flex min-w-0 items-start gap-3.5">
           <button
             onClick={() => router.push('/library')}
             className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-edge bg-surface transition hover:border-primary hover:text-primary"
           >
             <ArrowLeft className="h-4.5 w-4.5 rtl:rotate-180" />
           </button>
-          <div className="min-w-0">
-            <h1 className="truncate text-2xl font-extrabold tracking-tight sm:text-3xl">{doc.title}</h1>
+          <div className="min-w-0 flex-1">
+            <h1 className="break-words text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">{doc.title}</h1>
             <p className="mt-0.5 text-[14.5px] text-muted-fg">
               {doc.pages} {lang === 'ar' ? 'صفحة' : 'pages'} · {words.toLocaleString()} {lang === 'ar' ? 'كلمة' : 'words'} · {detectLang(doc.text) === 'ar' ? 'عربي' : 'English'} · {stageName(stage, lang)}
             </p>

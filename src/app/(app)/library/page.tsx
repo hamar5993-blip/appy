@@ -8,7 +8,7 @@ import { Button, EmptyState, Spinner } from '@/components/ui';
 import type { Document } from '@/types';
 import { toast } from 'sonner';
 import { Plus, Search, Trash2, FileText, ArrowRight, Clock3, FileWarning } from 'lucide-react';
-import { cn, trunc } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 export default function LibraryPage() {
   const { t, lang } = useSettings();
@@ -141,10 +141,10 @@ export default function LibraryPage() {
                 <div className="min-w-0 flex-1">
                   <Link
                     href={`/document/${doc.id}`}
-                    className="block truncate font-bold leading-snug transition group-hover:text-primary"
+                    className="block break-words font-bold leading-snug transition group-hover:text-primary"
                     title={doc.title}
                   >
-                    {trunc(doc.title ?? '—', 44)}
+                    {doc.title || '—'}
                   </Link>
                   <p className="mt-1 line-clamp-1 text-xs text-muted-fg">
                     {doc.pages} {lang === 'ar' ? 'صفحة' : 'pages'} · {(doc.word_count ?? 0).toLocaleString()} {lang === 'ar' ? 'كلمة' : 'words'}
