@@ -8,11 +8,19 @@ import { supabase } from '@/lib/supabase';
 import { useSettings } from '@/components/settings';
 import { Button, Card } from '@/components/ui';
 import { toast } from 'sonner';
-import { ImagePlus, X, Sparkles, Copy, Check, Lightbulb } from 'lucide-react';
+import { Paperclip, X, Sparkles, Copy, Check, Lightbulb, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const ACCEPTED_IMAGE = /^image\/(png|jpe?g|webp|gif)$/i;
-const MAX_FILE_BYTES = 12 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
+const MAX_PDF_BYTES = 20 * 1024 * 1024;
+const MAX_PDF_TEXT = 50_000;
+const MAX_PDF_TEXT_PAGES = 100;
+const MAX_PDF_SEND_PAGES = 100;
+
+type Attachment =
+  | { kind: 'image'; name: string; dataUrl: string }
+  | { kind: 'pdf'; name: string; pages: number; text: string; fileData?: string };
 
 /* Downscale phone photos so the request stays small and fast. */
 async function fileToDataUrl(file: File): Promise<string> {
@@ -35,6 +43,65 @@ async function fileToDataUrl(file: File): Promise<string> {
   bitmap.close?.();
 
   return canvas.toDataURL('image/jpeg', 0.85);
+}
+
+/* Extract text from a PDF with pdf.js. Scanned PDFs (no text layer) are sent
+   to the AI as a PDF file so it can read the pages directly. */
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error('could not read file'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function extractPdf(file: File): Promise<{ pages: number; text: string; fileData?: string }> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+
+  const pdfjs = await import('pdfjs-dist');
+  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+
+  /* pdf.js transfers the buffer it is given — hand it a copy. */
+  const task = pdfjs.getDocument({ data: bytes.slice() });
+  const pdf = await task.promise;
+  const pages = pdf.numPages;
+  let text = '';
+  try {
+    const textPages = Math.min(pages, MAX_PDF_TEXT_PAGES);
+    for (let i = 1; i <= textPages && text.length < MAX_PDF_TEXT; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map((item) => ('str' in item ? item.str : '')).join(' ') + '\n\n';
+    }
+    text = text.trim().slice(0, MAX_PDF_TEXT);
+  } finally {
+    await task.destroy();
+  }
+
+  if (text.length >= 80) return { pages, text };
+
+  /* Scanned PDF: send the document itself so the model can read the pages. */
+  if (pages <= MAX_PDF_SEND_PAGES) {
+    return { pages, text: '', fileData: await blobToDataUrl(file) };
+  }
+
+  /* More than 100 pages: rebuild a document with just the first 100. */
+  const { PDFDocument } = await import('pdf-lib');
+  const source = await PDFDocument.load(bytes);
+  const out = await PDFDocument.create();
+  const copied = await out.copyPages(source, source.getPageIndices().slice(0, MAX_PDF_SEND_PAGES));
+  copied.forEach((page) => out.addPage(page));
+  const truncated = await out.save();
+  const truncatedBytes = truncated.buffer.slice(
+    truncated.byteOffset,
+    truncated.byteOffset + truncated.byteLength
+  ) as ArrayBuffer;
+  return {
+    pages,
+    text: '',
+    fileData: await blobToDataUrl(new Blob([truncatedBytes], { type: 'application/pdf' })),
+  };
 }
 
 function renderInline(text: string, key: string) {
@@ -156,31 +223,64 @@ export default function HomeworkPage() {
   const { t, lang } = useSettings();
   const fileRef = useRef<HTMLInputElement>(null);
   const [question, setQuestion] = useState('');
-  const [image, setImage] = useState<string | null>(null);
+  const [attachment, setAttachment] = useState<Attachment | null>(null);
+  const [readingPdf, setReadingPdf] = useState(false);
   const [busy, setBusy] = useState(false);
   const [answer, setAnswer] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const pickImage = async (file?: File) => {
+  const pickFile = async (file?: File) => {
     if (!file) return;
+
+    const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+    if (isPdf) {
+      if (file.size > MAX_PDF_BYTES) {
+        toast.error(t.homeworkPdfTooLarge);
+        return;
+      }
+      setReadingPdf(true);
+      try {
+        const { pages, text, fileData } = await extractPdf(file);
+        if (!text && !fileData) throw new Error('empty PDF');
+        setAttachment({ kind: 'pdf', name: file.name, pages, text, fileData });
+      } catch {
+        toast.error(t.homeworkPdfFailed);
+      } finally {
+        setReadingPdf(false);
+      }
+      return;
+    }
+
     if (!ACCEPTED_IMAGE.test(file.type)) {
       toast.error(t.homeworkImageType);
       return;
     }
-    if (file.size > MAX_FILE_BYTES) {
+    if (file.size > MAX_IMAGE_BYTES) {
       toast.error(t.homeworkImageTooLarge);
       return;
     }
     try {
-      setImage(await fileToDataUrl(file));
+      setAttachment({ kind: 'image', name: file.name, dataUrl: await fileToDataUrl(file) });
     } catch {
       toast.error(t.homeworkImageFailed);
     }
   };
 
   const solve = async () => {
-    if (busy) return;
-    if (!question.trim() && !image) {
+    if (busy || readingPdf) return;
+
+    const pdfText = attachment?.kind === 'pdf' ? attachment.text : '';
+    const pdfName = attachment?.kind === 'pdf' ? attachment.name : '';
+    const pdfFile = attachment?.kind === 'pdf' && attachment.fileData
+      ? { name: attachment.name, dataUrl: attachment.fileData }
+      : null;
+    const images = attachment?.kind === 'image' ? [attachment.dataUrl] : [];
+    const composedQuestion = [
+      question.trim(),
+      pdfText ? `PDF content (${pdfName}):\n\n${pdfText}` : '',
+    ].filter(Boolean).join('\n\n');
+
+    if (!composedQuestion && !images.length && !pdfFile) {
       toast.error(t.homeworkNeedInput);
       return;
     }
@@ -197,8 +297,9 @@ export default function HomeworkPage() {
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          question: question.trim(),
-          image: image ?? undefined,
+          question: composedQuestion,
+          images,
+          file: pdfFile,
           lang,
         }),
       });
@@ -266,25 +367,49 @@ export default function HomeworkPage() {
           <input
             ref={fileRef}
             type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif"
+            accept=".pdf,application/pdf,image/png,image/jpeg,image/webp,image/gif"
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file) pickImage(file);
+              if (file) pickFile(file);
               e.target.value = '';
             }}
           />
 
-          {image ? (
+          {readingPdf ? (
+            <div className="flex w-full items-center gap-3 rounded-xl border border-edge bg-background p-3">
+              <span className="inline-block h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-edge border-t-primary" />
+              <span className="text-[13px] font-semibold text-muted-fg">{t.homeworkPdfReading}</span>
+            </div>
+          ) : attachment ? (
             <div className="flex w-full items-center gap-3 rounded-xl border border-edge bg-background p-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={image} alt="" className="h-16 w-16 rounded-lg object-cover" />
-              <span className="flex-1 text-xs font-semibold text-muted-fg">{t.homeworkAttachHint}</span>
+              {attachment.kind === 'image' ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={attachment.dataUrl} alt="" className="h-16 w-16 shrink-0 rounded-lg object-cover" />
+                </>
+              ) : (
+                <span className="grid h-16 w-16 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <FileText className="h-7 w-7" />
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-bold">{attachment.name}</p>
+                <p className="mt-0.5 text-xs text-muted-fg">
+                  {attachment.kind === 'pdf'
+                    ? [
+                        t.homeworkPdfPages(attachment.pages),
+                        attachment.pages > MAX_PDF_SEND_PAGES ? t.homeworkPdfLimit : '',
+                        attachment.fileData ? t.homeworkPdfScanned : '',
+                      ].filter(Boolean).join(' · ')
+                    : t.homeworkAttachHint}
+                </p>
+              </div>
               <button
                 type="button"
-                onClick={() => setImage(null)}
+                onClick={() => setAttachment(null)}
                 title={t.homeworkRemove}
-                className="grid h-8 w-8 place-items-center rounded-lg text-muted-fg transition hover:bg-red-500/10 hover:text-red-500"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted-fg transition hover:bg-red-500/10 hover:text-red-500"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -296,7 +421,7 @@ export default function HomeworkPage() {
                 onClick={() => fileRef.current?.click()}
                 className="inline-flex items-center gap-2 rounded-xl border border-edge bg-surface px-4 py-2.5 text-[13px] font-bold text-muted-fg transition hover:border-primary hover:text-primary"
               >
-                <ImagePlus className="h-4 w-4" />
+                <Paperclip className="h-4 w-4" />
                 {t.homeworkAttach}
               </button>
               <span className="text-[12px] text-muted-fg">{t.homeworkAttachHint}</span>
@@ -305,7 +430,7 @@ export default function HomeworkPage() {
         </div>
 
         <div className="mt-5 flex justify-end">
-          <Button onClick={solve} loading={busy} size="lg">
+          <Button onClick={solve} loading={busy} disabled={busy || readingPdf} size="lg">
             {!busy && <Sparkles className="h-4 w-4" />}
             {busy ? t.homeworkSolving : t.homeworkSolve}
           </Button>
