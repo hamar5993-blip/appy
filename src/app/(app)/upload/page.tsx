@@ -30,6 +30,11 @@ export default function UploadPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [listening, setListening] = useState(false);
   const recogRef = useRef<any>(null);
+  const shouldListenRef = useRef(false);
+  const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const restartCountRef = useRef(0);
+  const langRef = useRef(lang);
+  langRef.current = lang;
   const baseTextRef = useRef('');
   const accumRef = useRef('');
 
@@ -175,25 +180,35 @@ export default function UploadPage() {
   };
 
   /* ---------- speech-to-text dictation (Web Speech API) ---------- */
-  const toggleDictation = () => {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) {
-      toast.error(t.micUnsupported);
-      return;
-    }
-    if (listening) {
-      recogRef.current?.stop();
-      setListening(false);
-      return;
-    }
-    setMode('paste');
+  /* The browser tries to end the session on its own (long silence, timeouts),
+     so we transparently restart it and let only the button stop the recording. */
+  const startRecognition = (Ctor?: any) => {
+    const SR = Ctor || (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR || !shouldListenRef.current) return;
     const r = new SR();
-    r.lang = lang === 'ar' ? 'ar-SA' : 'en-US';
+    r.lang = langRef.current === 'ar' ? 'ar-SA' : 'en-US';
     r.continuous = true;
     r.interimResults = false;
-    baseTextRef.current = pasteText;
-    accumRef.current = '';
+    r.maxAlternatives = 1;
+
+    const scheduleRestart = (delay = 200) => {
+      if (!shouldListenRef.current) return;
+      restartCountRef.current += 1;
+      if (restartCountRef.current > 30) {
+        shouldListenRef.current = false;
+        setListening(false);
+        toast.error(t.micError);
+        return;
+      }
+      if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+      restartTimerRef.current = setTimeout(() => {
+        restartTimerRef.current = null;
+        startRecognition(SR);
+      }, delay);
+    };
+
     r.onresult = (e: any) => {
+      restartCountRef.current = 0;
       let finalText = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
@@ -205,21 +220,71 @@ export default function UploadPage() {
         );
       }
     };
-    r.onend = () => setListening(false);
-    r.onerror = (e: any) => {
-      setListening(false);
-      if (e?.error === 'not-allowed') toast.error(lang === 'ar' ? 'تم رفض إذن الميكروفون.' : 'Microphone permission was denied.');
+    r.onend = () => {
+      if (recogRef.current === r) recogRef.current = null;
+      /* Another session is already active — do not spawn a duplicate. */
+      if (recogRef.current !== null) return;
+      /* Restart after the browser's own stop, unless the user pressed the button. */
+      scheduleRestart();
     };
+    r.onerror = (e: any) => {
+      const code = e?.error;
+      if (code === 'not-allowed' || code === 'service-not-allowed') {
+        shouldListenRef.current = false;
+        setListening(false);
+        toast.error(langRef.current === 'ar' ? 'تم رفض إذن الميكروفون.' : 'Microphone permission was denied.');
+      } else if (code === 'audio-capture' || code === 'language-not-supported') {
+        shouldListenRef.current = false;
+        setListening(false);
+        toast.error(t.micError);
+      }
+      /* 'no-speech' / 'aborted' / 'network' are recoverable: onend restarts. */
+    };
+
     try {
       r.start();
       recogRef.current = r;
-      setListening(true);
     } catch {
-      toast.error(t.micUnsupported);
+      /* start() can throw if called too soon after the previous session ended */
+      scheduleRestart(400);
     }
   };
 
-  useEffect(() => () => { try { recogRef.current?.stop(); } catch { /* ignore */ } }, []);
+  const stopDictation = () => {
+    shouldListenRef.current = false;
+    if (restartTimerRef.current) {
+      clearTimeout(restartTimerRef.current);
+      restartTimerRef.current = null;
+    }
+    try { recogRef.current?.stop(); } catch { /* ignore */ }
+    recogRef.current = null;
+    setListening(false);
+  };
+
+  const toggleDictation = () => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      toast.error(t.micUnsupported);
+      return;
+    }
+    if (shouldListenRef.current) {
+      stopDictation();
+      return;
+    }
+    setMode('paste');
+    baseTextRef.current = pasteText;
+    accumRef.current = '';
+    restartCountRef.current = 0;
+    shouldListenRef.current = true;
+    setListening(true);
+    startRecognition(SR);
+  };
+
+  useEffect(() => () => {
+    shouldListenRef.current = false;
+    if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+    try { recogRef.current?.stop(); } catch { /* ignore */ }
+  }, []);
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
