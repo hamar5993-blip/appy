@@ -5,8 +5,16 @@ import { Logo } from '@/components/ui';
 
 export const metadata: Metadata = {
   title: 'Pricing — Easier',
-  description: 'One simple plan: 1 day free, then $4.99/month. Cancel anytime — keep access until the end of your paid period.',
+  description: 'Easier Pro — $4.99 per month (recurring monthly subscription), includes a 1-day free trial. All study features included. Cancel anytime.',
 };
+
+const PLAN = {
+  name: 'Easier Pro — Monthly Subscription',
+  price: '$4.99',
+  cycle: 'per month · recurring (auto-renews every month)',
+  trial: '1-day free trial starts at signup — no payment is taken during the trial',
+} as const;
+
 
 const FEATURES = [
   'Unlimited document uploads (PDF · DOCX · TXT, up to 70 pages)',
@@ -55,25 +63,40 @@ export default function PricingPage() {
         </div>
 
         <div className="animate-fade-up text-center">
-          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">One simple plan</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">One simple paid plan</h1>
           <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-muted-fg">
-            Every feature included. 1 day free, then $4.99/month — cancel anytime.
+            Every feature included. <strong className="font-bold text-text">$4.99/month after a 1-day free trial</strong> — cancel anytime.
           </p>
         </div>
 
         <div className="animate-fade-up mx-auto mt-10 max-w-md">
+          {/* Plan summary — exactly what you are charged */}
+          <dl className="mb-4 grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-2xl border border-edge bg-surface px-5 py-4 text-[13px]">
+            <dt className="font-bold text-muted-fg">Plan name</dt>
+            <dd>Easier Pro</dd>
+            <dt className="font-bold text-muted-fg">Price</dt>
+            <dd>$4.99 per month</dd>
+            <dt className="font-bold text-muted-fg">Billing cycle</dt>
+            <dd>Monthly, recurring (auto-renews)</dd>
+            <dt className="font-bold text-muted-fg">Free trial</dt>
+            <dd>First 1 day — you pay nothing until it ends</dd>
+            <dt className="font-bold text-muted-fg">Cancellation</dt>
+            <dd>Anytime, no fees</dd>
+          </dl>
+
           <div className="relative rounded-3xl border-2 border-primary bg-surface p-7 shadow-[0_24px_60px_-20px_rgba(99,102,241,.35)]">
             <span className="absolute -top-3 start-6 inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-primary to-[var(--primary-2)] px-4 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white">
               <Clock3 className="h-3 w-3" />
               1-day free trial included
             </span>
-            <h2 className="mt-2 text-lg font-extrabold">Easier Subscription</h2>
+            <h2 className="mt-2 text-lg font-extrabold">{PLAN.name}</h2>
             <div className="mt-3 flex items-end gap-2">
-              <span className="bg-linear-to-r from-primary to-[var(--primary-2)] bg-clip-text text-5xl font-extrabold tracking-tight text-transparent">$4.99</span>
-              <span className="pb-1.5 text-sm font-semibold text-muted-fg">per month · billed monthly</span>
+              <span className="bg-linear-to-r from-primary to-[var(--primary-2)] bg-clip-text text-5xl font-extrabold tracking-tight text-transparent">{PLAN.price}</span>
+              <span className="pb-1.5 text-sm font-semibold text-muted-fg">{PLAN.cycle}</span>
             </div>
             <p className="mt-2 text-[13px] text-muted-fg">
-              Nothing is charged during your free trial day. Cancel before it ends and you pay nothing at all.
+              {PLAN.trial}. <strong className="font-bold text-text">You pay $4.99 only after the trial day ends.</strong> Cancel before it ends and you are never charged;{" "}
+              <Link href="/terms" className="font-semibold text-primary hover:underline">full billing terms</Link>.
             </p>
 
             <ul className="mt-6 space-y-2.5">
