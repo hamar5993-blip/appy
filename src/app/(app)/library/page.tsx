@@ -7,7 +7,7 @@ import { useSettings } from '@/components/settings';
 import { Button, EmptyState, Spinner } from '@/components/ui';
 import type { Document } from '@/types';
 import { toast } from 'sonner';
-import { Plus, Search, Trash2, FileText, ArrowRight, Clock3, FileWarning } from 'lucide-react';
+import { Plus, Search, Trash2, FileText, ArrowRight, Clock3, FileWarning, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function LibraryPage() {
@@ -85,12 +85,20 @@ export default function LibraryPage() {
           <h1 className="text-2xl font-extrabold tracking-tight sm:text-[27px]">{t.myLibrary}</h1>
           <p className="mt-1 text-sm text-muted-fg">{t.docsCount(documents.length)}</p>
         </div>
-        <Link href="/upload">
-          <Button size="md">
-            <Plus className="h-4 w-4" />
-            {t.newStudy}
-          </Button>
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/homework">
+            <Button variant="outline" size="md">
+              <Lightbulb className="h-4 w-4" />
+              {t.homework}
+            </Button>
+          </Link>
+          <Link href="/upload">
+            <Button size="md">
+              <Plus className="h-4 w-4" />
+              {t.newStudy}
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Search */}

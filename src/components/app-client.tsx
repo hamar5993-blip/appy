@@ -8,7 +8,7 @@ import { useSettings } from '@/components/settings';
 import { toast } from 'sonner';
 import { Spinner, Logo, Button } from '@/components/ui';
 import type { User } from '@/types';
-import { Moon, Sun, LogOut, ChevronDown, Plus, Mail, Sparkles, Volume2, BrainCircuit, BookOpen, Clock3 } from 'lucide-react';
+import { Moon, Sun, LogOut, ChevronDown, Plus, Mail, Sparkles, Volume2, BrainCircuit, BookOpen, Clock3, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 function Header({ onGate }: { onGate?: (locked: boolean) => void }) {
@@ -19,7 +19,7 @@ function Header({ onGate }: { onGate?: (locked: boolean) => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const gateRef = useRef(onGate);
-  gateRef.current = onGate;
+  useEffect(() => { gateRef.current = onGate; }, [onGate]);
 
   /* Entitlement check (Waffo subscription / trial) */
   useEffect(() => {
@@ -120,6 +120,19 @@ function Header({ onGate }: { onGate?: (locked: boolean) => void }) {
           >
             {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
           </button>
+
+          <Link
+            href="/homework"
+            className={cn(
+              'inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-[13px] font-bold transition sm:h-auto sm:px-4 sm:py-2',
+              pathname === '/homework'
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-edge bg-surface text-muted-fg hover:border-primary hover:text-primary'
+            )}
+          >
+            <Lightbulb className="h-4 w-4" />
+            <span className="hidden sm:inline">{t.homework}</span>
+          </Link>
 
           {pathname === '/library' && (
             <Link

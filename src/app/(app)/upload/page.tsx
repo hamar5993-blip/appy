@@ -17,6 +17,31 @@ const FEATURES = [
   { icon: BookOpen, key: 'f4' },
 ] as const;
 
+/* Minimal Web Speech API types — the DOM lib does not ship them. */
+type SpeechResult = { isFinal: boolean; 0: { transcript: string } };
+type SpeechEvent = { resultIndex: number; results: ArrayLike<SpeechResult> };
+type SpeechErrorEvent = { error?: string };
+type Recognition = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onresult: ((e: SpeechEvent) => void) | null;
+  onend: (() => void) | null;
+  onerror: ((e: SpeechErrorEvent) => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+type RecognitionCtor = new () => Recognition;
+
+const getRecognitionCtor = (): RecognitionCtor | undefined => {
+  const w = window as unknown as {
+    SpeechRecognition?: RecognitionCtor;
+    webkitSpeechRecognition?: RecognitionCtor;
+  };
+  return w.SpeechRecognition || w.webkitSpeechRecognition;
+};
+
 export default function UploadPage() {
   const router = useRouter();
   const { t, lang } = useSettings();
@@ -29,14 +54,15 @@ export default function UploadPage() {
   const [pasteText, setPasteText] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [listening, setListening] = useState(false);
-  const recogRef = useRef<any>(null);
+  const recogRef = useRef<Recognition | null>(null);
   const shouldListenRef = useRef(false);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const restartCountRef = useRef(0);
   const langRef = useRef(lang);
-  langRef.current = lang;
   const baseTextRef = useRef('');
   const accumRef = useRef('');
+
+  useEffect(() => { langRef.current = lang; }, [lang]);
 
   const extractPdf = async (file: File) => {
     const pdfjsLib = await import('pdfjs-dist');
@@ -182,8 +208,8 @@ export default function UploadPage() {
   /* ---------- speech-to-text dictation (Web Speech API) ---------- */
   /* The browser tries to end the session on its own (long silence, timeouts),
      so we transparently restart it and let only the button stop the recording. */
-  const startRecognition = (Ctor?: any) => {
-    const SR = Ctor || (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  const startRecognition = (Ctor?: RecognitionCtor) => {
+    const SR = Ctor ?? getRecognitionCtor();
     if (!SR || !shouldListenRef.current) return;
     const r = new SR();
     r.lang = langRef.current === 'ar' ? 'ar-SA' : 'en-US';
@@ -207,7 +233,7 @@ export default function UploadPage() {
       }, delay);
     };
 
-    r.onresult = (e: any) => {
+    r.onresult = (e) => {
       restartCountRef.current = 0;
       let finalText = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -227,7 +253,7 @@ export default function UploadPage() {
       /* Restart after the browser's own stop, unless the user pressed the button. */
       scheduleRestart();
     };
-    r.onerror = (e: any) => {
+    r.onerror = (e) => {
       const code = e?.error;
       if (code === 'not-allowed' || code === 'service-not-allowed') {
         shouldListenRef.current = false;
@@ -262,7 +288,7 @@ export default function UploadPage() {
   };
 
   const toggleDictation = () => {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SR = getRecognitionCtor();
     if (!SR) {
       toast.error(t.micUnsupported);
       return;

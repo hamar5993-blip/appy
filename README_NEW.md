@@ -9,6 +9,7 @@ Convert your study materials into summaries, flashcards, audio lessons and visua
 - **Smart Summaries** - Comprehensive, bullet points, or legal/key terms modes
 - **Personalized** - Summaries, flashcards and visual maps tailored to each document
 - **Library Management** - Save and organize all your study sets
+- **Homework Solver** - Paste a question or upload a photo and get a step-by-step solution via OpenRouter
 - **Flashcards & Quiz** - Coming soon with AI generation via OpenRouter
 - **Audio Tutor** - Text-to-speech for summaries
 - **Visual Maps** - Mind maps, timelines, and process flows
@@ -37,6 +38,8 @@ Copy `.env.example` to `.env.local` and fill in your keys:
 ```bash
 cp .env.example .env.local
 ```
+
+The homework solver requires `OPENROUTER_API_KEY`. Without it the page still loads but shows a "not configured" message. `OPENROUTER_MODEL` is optional and must point to a vision-capable model.
 
 ### 3. Set up Supabase
 
