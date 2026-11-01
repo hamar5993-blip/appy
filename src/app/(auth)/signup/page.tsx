@@ -7,18 +7,15 @@ import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { Button, Input, Label, Logo } from '@/components/ui';
 import { useSettings } from '@/components/settings';
-import { STAGES, type StageKey } from '@/lib/i18n';
-import { Mail, Lock, User, Check } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Mail, Lock, User } from 'lucide-react';
 
 export default function SignupPage() {
   const router = useRouter();
-  const { t, lang } = useSettings();
+  const { t } = useSettings();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [stage, setStage] = useState<StageKey>('high');
   const [loading, setLoading] = useState(false);
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -36,7 +33,7 @@ export default function SignupPage() {
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
-        options: { data: { name, stage } },
+        options: { data: { name } },
       });
       if (error) throw error;
 
@@ -45,7 +42,6 @@ export default function SignupPage() {
           id: data.user.id,
           email: data.user.email,
           name,
-          stage,
         });
       }
       toast.success('Account created — welcome to Easier!');
@@ -105,35 +101,6 @@ export default function SignupPage() {
               <div>
                 <Label>{t.confirmPass}</Label>
                 <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required autoComplete="new-password" />
-              </div>
-            </div>
-
-            <div>
-              <Label>{t.stageLabel}</Label>
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-                {(Object.entries(STAGES) as [StageKey, typeof STAGES[StageKey]][]).map(([key, s]) => (
-                  <button
-                    type="button"
-                    key={key}
-                    onClick={() => setStage(key)}
-                    className={cn(
-                      'relative rounded-xl border p-2 text-center transition-all duration-200 hover:-translate-y-0.5',
-                      stage === key
-                        ? 'border-primary bg-primary/10 shadow-[0_4px_12px_rgba(99,102,241,.2)]'
-                        : 'border-edge bg-background hover:border-primary/40'
-                    )}
-                  >
-                    {stage === key && (
-                      <span className="absolute top-1 end-1 grid h-4 w-4 place-items-center rounded-full bg-primary text-white">
-                        <Check className="h-2.5 w-2.5" />
-                      </span>
-                    )}
-                    <span className="block text-xl">{s.icon}</span>
-                    <span className="mt-1 block text-[10.5px] font-bold leading-tight">
-                      {lang === 'ar' ? s.ar : s.en}
-                    </span>
-                  </button>
-                ))}
               </div>
             </div>
 

@@ -7,7 +7,7 @@ Convert your study materials into summaries, flashcards, audio lessons and visua
 - **User Authentication** - Sign up/sign in with Supabase Auth
 - **Document Upload** - Support for PDF, DOCX, TXT files (up to 70 pages)
 - **Smart Summaries** - Comprehensive, bullet points, or legal/key terms modes
-- **Personalized** - Adapts to educational stage (Primary, Middle, High School, University, Teacher)
+- **Personalized** - Summaries, flashcards and visual maps tailored to each document
 - **Library Management** - Save and organize all your study sets
 - **Flashcards & Quiz** - Coming soon with AI generation via OpenRouter
 - **Audio Tutor** - Text-to-speech for summaries

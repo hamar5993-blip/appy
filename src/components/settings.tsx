@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { I18N, type Lang, type Dict, type StageKey, STAGES } from '@/lib/i18n';
+import { I18N, type Lang, type Dict } from '@/lib/i18n';
 
 type Settings = {
   lang: Lang;
@@ -12,11 +12,6 @@ type Settings = {
 };
 
 const Ctx = createContext<Settings | null>(null);
-
-export const stageName = (stage: string, lang: Lang) => {
-  const s = STAGES[stage as StageKey] ?? STAGES.high;
-  return lang === 'ar' ? s.ar : s.en;
-};
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLang] = useState<Lang>('en');

@@ -1,13 +1,3 @@
-export const STAGES = {
-  primary: { icon: '🎨', en: 'Primary School', ar: 'الابتدائية' },
-  middle: { icon: '📘', en: 'Middle School', ar: 'المتوسطة' },
-  high: { icon: '🧪', en: 'High School', ar: 'الثانوية' },
-  university: { icon: '🎓', en: 'University / College', ar: 'الجامعية' },
-  teacher: { icon: '🏫', en: 'Teacher / Lecturer', ar: 'معلم / محاضر جامعي' },
-} as const;
-
-export type StageKey = keyof typeof STAGES;
-
 export const I18N = {
   en: {
     appTagline: 'Smarter studying starts here — turn your materials into summaries, flashcards and visual maps.',
@@ -17,7 +7,6 @@ export const I18N = {
     email: 'Email',
     password: 'Password',
     confirmPass: 'Confirm password',
-    stageLabel: 'Educational stage',
     createAccount: 'Create account',
     noAccount: "Don't have an account?",
     haveAccount: 'Already have an account?',
@@ -52,7 +41,6 @@ export const I18N = {
     regenerate: 'AI Generated',
     loadingDoc: 'Loading document…',
     logout: 'Log out',
-    stage: 'Stage',
     noSummary: 'No summary available.',
     cardCount: (t: number) => `${t} card${t !== 1 ? 's' : ''}`,
     flip: 'Tap to flip',
@@ -101,7 +89,6 @@ export const I18N = {
     email: 'البريد الإلكتروني',
     password: 'كلمة المرور',
     confirmPass: 'تأكيد كلمة المرور',
-    stageLabel: 'المرحلة الدراسية',
     createAccount: 'إنشاء الحساب',
     noAccount: 'ليس لديك حساب؟',
     haveAccount: 'لديك حساب بالفعل؟',
@@ -136,7 +123,6 @@ export const I18N = {
     regenerate: 'مولَّد بالذكاء الاصطناعي',
     loadingDoc: 'جارٍ تحميل المستند…',
     logout: 'تسجيل الخروج',
-    stage: 'المرحلة',
     noSummary: 'لا يوجد ملخص.',
     cardCount: (t: number) => `${t} ${t === 1 ? 'بطاقة' : 'بطاقات'}`,
     flip: 'انقر للقلب',

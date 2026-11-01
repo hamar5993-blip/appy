@@ -4,12 +4,11 @@ import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { useSettings, stageName } from '@/components/settings';
+import { useSettings } from '@/components/settings';
 import { toast } from 'sonner';
 import { Spinner, Logo, Button } from '@/components/ui';
 import type { User } from '@/types';
-import { STAGES, type StageKey } from '@/lib/i18n';
-import { Moon, Sun, LogOut, ChevronDown, Plus, Check, Mail, Sparkles, Volume2, BrainCircuit, BookOpen, Clock3 } from 'lucide-react';
+import { Moon, Sun, LogOut, ChevronDown, Plus, Mail, Sparkles, Volume2, BrainCircuit, BookOpen, Clock3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 function Header({ onGate }: { onGate?: (locked: boolean) => void }) {
@@ -75,7 +74,7 @@ function Header({ onGate }: { onGate?: (locked: boolean) => void }) {
         }
         if (!alive) return;
         setUser(
-          profile ?? { id: authUser.id, email: authUser.email ?? '', name: 'Student', stage: 'high', created_at: '' }
+          profile ?? { id: authUser.id, email: authUser.email ?? '', name: 'Student', created_at: '' }
         );
         gateRef.current?.(computeLock(profile));
       } catch {
@@ -94,13 +93,6 @@ function Header({ onGate }: { onGate?: (locked: boolean) => void }) {
     document.addEventListener('click', close);
     return () => document.removeEventListener('click', close);
   }, []);
-
-  const changeStage = async (stage: StageKey) => {
-    if (!user) return;
-    setUser({ ...user, stage });
-    await supabase.from('profiles').update({ stage }).eq('id', user.id);
-    toast.success(stageName(stage, lang));
-  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -150,7 +142,6 @@ function Header({ onGate }: { onGate?: (locked: boolean) => void }) {
                 </span>
                 <span className="hidden text-start sm:block">
                   <span className="block max-w-[120px] truncate text-xs font-bold leading-tight">{user.name}</span>
-                  <span className="block text-[10.5px] leading-tight text-muted-fg">{stageName(user.stage, lang)}</span>
                 </span>
                 <ChevronDown className={cn('h-3.5 w-3.5 text-muted-fg transition-transform', menuOpen && 'rotate-180')} />
               </button>
@@ -162,30 +153,9 @@ function Header({ onGate }: { onGate?: (locked: boolean) => void }) {
 
             {menuOpen && user && (
               <div className="animate-fade-up absolute end-0 top-full z-50 mt-2 w-72 rounded-2xl border border-edge bg-surface p-4 shadow-[0_16px_48px_-12px_rgba(0,0,0,.25)]">
-                <div className="mb-4 border-b border-edge pb-3">
+                <div className="mb-4">
                   <div className="text-sm font-bold">{user.name}</div>
                   <div className="mt-0.5 truncate text-xs text-muted-fg">{user.email}</div>
-                </div>
-                <div className="mb-3 text-[10px] font-extrabold uppercase tracking-wider text-muted-fg">
-                  {t.stageLabel}
-                </div>
-                <div className="mb-4 space-y-1">
-                  {(Object.entries(STAGES) as [StageKey, typeof STAGES[StageKey]][]).map(([key, s]) => (
-                    <button
-                      key={key}
-                      onClick={() => changeStage(key)}
-                      className={cn(
-                        'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[13px] font-semibold transition',
-                        user.stage === key
-                          ? 'border border-primary bg-primary/10 text-primary'
-                          : 'border border-transparent hover:bg-background'
-                      )}
-                    >
-                      <span className="text-base">{s.icon}</span>
-                      <span className="flex-1">{lang === 'ar' ? s.ar : s.en}</span>
-                      {user.stage === key && <Check className="h-3.5 w-3.5" />}
-                    </button>
-                  ))}
                 </div>
                 <button
                   onClick={handleLogout}

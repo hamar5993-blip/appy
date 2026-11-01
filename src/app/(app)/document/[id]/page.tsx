@@ -6,12 +6,11 @@
 import { useEffect, useState, useMemo, useRef, Suspense, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { useSettings, stageName } from '@/components/settings';
+import { useSettings } from '@/components/settings';
 import { Button, Card, Spinner, Badge } from '@/components/ui';
 import type { Document } from '@/types';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { STAGES, type StageKey } from '@/lib/i18n';
 import { ArrowLeft, FileText, Sparkles, SquarePen, BrainCircuit,
   List, Gavel, ScrollText, Download, RotateCcw, Check, X, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 
@@ -43,13 +42,8 @@ const termFreq = (text: string, lang: 'en' | 'ar') => {
   return f;
 };
 
-const MODE_STAGES: Record<StageKey, { ratio: number; cards: number }> = {
-  primary: { ratio: .22, cards: 8 },
-  middle: { ratio: .26, cards: 10 },
-  high: { ratio: .30, cards: 12 },
-  university: { ratio: .34, cards: 14 },
-  teacher: { ratio: .38, cards: 14 },
-};
+/* Content tuning for summaries and flashcards. */
+const TUNING = { ratio: .30, cards: 12 };
 
 type Flashcard = { q: string; a: string };
 type Rating = 'hard' | 'medium' | 'easy';
@@ -82,7 +76,6 @@ function DocumentPageInner() {
   const router = useRouter();
   const { t, lang } = useSettings();
   const [doc, setDoc] = useState<Document | null>(null);
-  const [stage, setStage] = useState<StageKey>('high');
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [tab, setTab] = useState<'summary' | 'cards' | 'visual'>('summary');
@@ -112,15 +105,11 @@ function DocumentPageInner() {
               (e) => { clearTimeout(timer); reject(e); }
             );
           });
-        const [docRes, profileRes] = await Promise.all([
-          withTimeout<{ data: Document | null; error: any }>(supabase.from('documents').select('*').eq('id', params.id).single()),
-          withTimeout<{ data: { stage?: StageKey } | null }>(supabase.from('profiles').select('stage').eq('id', user.id).single()).catch(
-            () => ({ data: null }) as { data: { stage?: StageKey } | null }
-          ),
-        ]);
+        const docRes = await withTimeout<{ data: Document | null; error: any }>(
+          supabase.from('documents').select('*').eq('id', params.id).single()
+        );
         const docData = docRes.data;
         const docError = docRes.error;
-        const profile = profileRes.data;
         if (!alive) return;
         if (docError || !docData) {
           toast.error(t.notFound);
@@ -128,7 +117,6 @@ function DocumentPageInner() {
           return;
         }
         setDoc(docData);
-        if (profile?.stage) setStage(profile.stage);
         try {
           const saved = localStorage.getItem(`easier:summary:${params.id}`);
           if (saved) setOverride(JSON.parse(saved));
@@ -147,7 +135,7 @@ function DocumentPageInner() {
 
   /* derived content */
   const docLang = useMemo(() => detectLang(doc?.text ?? ''), [doc]);
-  const tuning = MODE_STAGES[stage] ?? MODE_STAGES.high;
+  const tuning = TUNING;
 
   const summarized = useMemo(() => {
     if (!doc) return { sentences: [] as string[], keywords: [] as string[] };
@@ -277,7 +265,7 @@ function DocumentPageInner() {
           <div className="min-w-0 flex-1">
             <h1 className="break-words text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">{doc.title}</h1>
             <p className="mt-0.5 text-[14.5px] text-muted-fg">
-              {doc.pages} {lang === 'ar' ? 'صفحة' : 'pages'} · {words.toLocaleString()} {lang === 'ar' ? 'كلمة' : 'words'} · {detectLang(doc.text) === 'ar' ? 'عربي' : 'English'} · {stageName(stage, lang)}
+              {doc.pages} {lang === 'ar' ? 'صفحة' : 'pages'} · {words.toLocaleString()} {lang === 'ar' ? 'كلمة' : 'words'} · {detectLang(doc.text) === 'ar' ? 'عربي' : 'English'}
             </p>
           </div>
         </div>

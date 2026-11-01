@@ -16,7 +16,7 @@ export default function PrivacyPage() {
 
       <Section title="1. What we collect">
         <ul>
-          <li><strong>Account data:</strong> your name, email address, and the educational stage you select — stored in Supabase when you create an account.</li>
+          <li><strong>Account data:</strong> your name and email address — stored in Supabase when you create an account.</li>
           <li><strong>Your documents:</strong> the documents you upload (PDF/DOCX/TXT) or paste, and their generated text, summaries and flashcards.</li>
           <li><strong>Study activity:</strong> flashcard difficulty ratings and quiz scores, saved so you can track progress.</li>
           <li><strong>Preferences (stored locally on your device):</strong> language (English/Arabic) and light/dark theme preference.</li>
@@ -28,7 +28,6 @@ export default function PrivacyPage() {
         <ul>
           <li>To provide the service: extract document text and generate summaries, flashcards and quizzes.</li>
           <li>To operate your account and show your library across devices.</li>
-          <li>To personalize results for your educational stage.</li>
           <li>To keep the service secure, prevent abuse and comply with law.</li>
         </ul>
         <p>We do <strong>not</strong> sell your personal data, and we do not use your documents to advertise to you.</p>
