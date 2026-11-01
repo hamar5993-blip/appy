@@ -33,6 +33,19 @@ function systemPrompt(lang: 'ar' | 'en') {
   ].join('\n');
 }
 
+function mapOpenRouterError(status: number, message: string): string {
+  const text = message.toLowerCase();
+  if (status === 401 || status === 403 || text.includes('invalid api key') || text.includes('no auth credentials')) {
+    return 'invalid_key';
+  }
+  if (status === 402 || text.includes('insufficient credit') || text.includes('not enough credit')) {
+    return 'no_credits';
+  }
+  if (status === 429) return 'rate_limited';
+  if (status === 413 || text.includes('too large') || text.includes('payload too')) return 'too_large';
+  return 'provider';
+}
+
 export async function POST(req: NextRequest) {
   try {
     const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
@@ -97,8 +110,9 @@ export async function POST(req: NextRequest) {
 
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
+      console.error('[homework] OPENROUTER_API_KEY is not set');
       return NextResponse.json(
-        { error: 'The AI tutor is not configured on the server yet' },
+        { error: 'The AI tutor is not configured on the server yet', code: 'not_configured' },
         { status: 503 }
       );
     }
@@ -139,7 +153,12 @@ export async function POST(req: NextRequest) {
       const json = await response.json().catch(() => null);
       if (!response.ok) {
         const message = json?.error?.message || `OpenRouter request failed (${response.status})`;
-        return NextResponse.json({ error: message }, { status: 502 });
+        const code = mapOpenRouterError(response.status, message);
+        console.error(`[homework] OpenRouter ${response.status} (${code}): ${message}`);
+        return NextResponse.json(
+          { error: message, code, providerStatus: response.status },
+          { status: code === 'invalid_key' ? 401 : 502 }
+        );
       }
 
       const content = json?.choices?.[0]?.message?.content;
@@ -153,22 +172,23 @@ export async function POST(req: NextRequest) {
               .join('')
           : '';
       if (!answer.trim()) {
-        return NextResponse.json({ error: 'The AI returned an empty answer' }, { status: 502 });
+        console.error('[homework] OpenRouter returned an empty answer');
+        return NextResponse.json({ error: 'The AI returned an empty answer', code: 'provider' }, { status: 502 });
       }
 
       return NextResponse.json({ answer: answer.trim(), model: MODEL });
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        return NextResponse.json({ error: 'The AI took too long to answer' }, { status: 504 });
+        console.error('[homework] OpenRouter request timed out after 55s');
+        return NextResponse.json({ error: 'The AI took too long to answer', code: 'timeout' }, { status: 504 });
       }
       throw error;
     } finally {
       clearTimeout(timer);
     }
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error && error.message ? error.message : 'Could not solve this question' },
-      { status: 500 }
-    );
+    const message = error instanceof Error && error.message ? error.message : 'Could not solve this question';
+    console.error('[homework] unexpected error:', error);
+    return NextResponse.json({ error: message, code: 'unknown' }, { status: 500 });
   }
 }

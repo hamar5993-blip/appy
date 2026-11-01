@@ -39,7 +39,9 @@ Copy `.env.example` to `.env.local` and fill in your keys:
 cp .env.example .env.local
 ```
 
-The homework solver requires `OPENROUTER_API_KEY`. Without it the page still loads but shows a "not configured" message. `OPENROUTER_MODEL` is optional and must point to a vision-capable model.
+The homework solver requires `OPENROUTER_API_KEY`. Without it the page still loads but shows a "not configured" message. `OPENROUTER_MODEL` is optional and must point to a model that accepts images and files (default: `google/gemini-3.5-flash`). Failures now surface the provider status and message in the UI and are logged on the server.
+
+> Note: on Vercel the request body limit is about 4.5 MB, so scanned PDFs sent as base64 must stay under ~3 MB. Text PDFs are extracted in the browser and are not affected by that limit.
 
 ### 3. Set up Supabase
 

@@ -17,6 +17,9 @@ const MAX_PDF_BYTES = 20 * 1024 * 1024;
 const MAX_PDF_TEXT = 50_000;
 const MAX_PDF_TEXT_PAGES = 100;
 const MAX_PDF_SEND_PAGES = 100;
+/* Vercel rejects request bodies over ~4.5 MB, so catch it before sending. */
+const MAX_REQUEST_BYTES = 4_200_000;
+const MAX_PDF_DATA_CHARS = 3_900_000;
 
 type Attachment =
   | { kind: 'image'; name: string; dataUrl: string }
@@ -83,7 +86,9 @@ async function extractPdf(file: File): Promise<{ pages: number; text: string; fi
 
   /* Scanned PDF: send the document itself so the model can read the pages. */
   if (pages <= MAX_PDF_SEND_PAGES) {
-    return { pages, text: '', fileData: await blobToDataUrl(file) };
+    const fileData = await blobToDataUrl(file);
+    if (fileData.length > MAX_PDF_DATA_CHARS) throw new Error('pdf-too-large');
+    return { pages, text: '', fileData };
   }
 
   /* More than 100 pages: rebuild a document with just the first 100. */
@@ -97,11 +102,9 @@ async function extractPdf(file: File): Promise<{ pages: number; text: string; fi
     truncated.byteOffset,
     truncated.byteOffset + truncated.byteLength
   ) as ArrayBuffer;
-  return {
-    pages,
-    text: '',
-    fileData: await blobToDataUrl(new Blob([truncatedBytes], { type: 'application/pdf' })),
-  };
+  const fileData = await blobToDataUrl(new Blob([truncatedBytes], { type: 'application/pdf' }));
+  if (fileData.length > MAX_PDF_DATA_CHARS) throw new Error('pdf-too-large');
+  return { pages, text: '', fileData };
 }
 
 function renderInline(text: string, key: string) {
@@ -227,6 +230,8 @@ export default function HomeworkPage() {
   const [readingPdf, setReadingPdf] = useState(false);
   const [busy, setBusy] = useState(false);
   const [answer, setAnswer] = useState('');
+  const [error, setError] = useState('');
+  const [errorDetail, setErrorDetail] = useState('');
   const [copied, setCopied] = useState(false);
 
   const pickFile = async (file?: File) => {
@@ -243,8 +248,10 @@ export default function HomeworkPage() {
         const { pages, text, fileData } = await extractPdf(file);
         if (!text && !fileData) throw new Error('empty PDF');
         setAttachment({ kind: 'pdf', name: file.name, pages, text, fileData });
-      } catch {
-        toast.error(t.homeworkPdfFailed);
+      } catch (err) {
+        toast.error(err instanceof Error && err.message === 'pdf-too-large'
+          ? t.homeworkPayloadTooLarge
+          : t.homeworkPdfFailed);
       } finally {
         setReadingPdf(false);
       }
@@ -284,8 +291,41 @@ export default function HomeworkPage() {
       toast.error(t.homeworkNeedInput);
       return;
     }
+
+    const requestBody = JSON.stringify({
+      question: composedQuestion,
+      images,
+      file: pdfFile,
+      lang,
+    });
+    if (new TextEncoder().encode(requestBody).length > MAX_REQUEST_BYTES) {
+      setAnswer('');
+      setError(t.homeworkPayloadTooLarge);
+      setErrorDetail('');
+      return;
+    }
+
+    /* Turn the server's status/code into a message the student can act on;
+       keep the raw provider text as a smaller secondary line. */
+    const describeError = (status: number, code: unknown) => {
+      if (code === 'invalid_key') return t.homeworkInvalidKey;
+      if (code === 'no_credits') return t.homeworkNoCredits;
+      if (code === 'rate_limited') return t.homeworkRateLimited;
+      if (code === 'too_large') return t.homeworkTooLarge;
+      if (code === 'timeout') return t.homeworkTimeout;
+      if (code === 'provider') return t.homeworkProviderError;
+      if (code === 'not_configured' || status === 503) return t.homeworkNotConfigured;
+      if (status === 401) return t.homeworkSignIn;
+      if (status === 413) return t.homeworkTooLarge;
+      if (status === 504) return t.homeworkTimeout;
+      if (status >= 500) return t.homeworkProviderError;
+      return t.homeworkError;
+    };
+
     setBusy(true);
     setAnswer('');
+    setError('');
+    setErrorDetail('');
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) throw new Error(t.homeworkSignIn);
@@ -296,29 +336,26 @@ export default function HomeworkPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          question: composedQuestion,
-          images,
-          file: pdfFile,
-          lang,
-        }),
+        body: requestBody,
       });
 
+      const json = await res.json().catch(() => null);
+
       if (!res.ok) {
-        throw new Error(
-          res.status === 401
-            ? t.homeworkSignIn
-            : res.status === 503
-              ? t.homeworkNotConfigured
-              : t.homeworkError
-        );
+        const serverMessage = typeof json?.error === 'string' ? json.error : '';
+        const friendly = describeError(res.status, json?.code);
+        setError(friendly);
+        setErrorDetail(serverMessage && serverMessage !== friendly ? serverMessage : '');
+        return;
       }
 
-      const json = await res.json().catch(() => ({}));
-      if (!json?.answer) throw new Error(t.homeworkError);
+      if (!json?.answer) {
+        setError(t.homeworkError);
+        return;
+      }
       setAnswer(json.answer);
-    } catch (error) {
-      toast.error(error instanceof Error && error.message ? error.message : t.homeworkError);
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : t.homeworkError);
     } finally {
       setBusy(false);
     }
@@ -356,7 +393,10 @@ export default function HomeworkPage() {
         <textarea
           id="homework-question"
           value={question}
-          onChange={(e) => setQuestion(e.target.value)}
+          onChange={(e) => {
+            setQuestion(e.target.value);
+            setError('');
+          }}
           placeholder={t.homeworkQuestionPh}
           rows={5}
           dir="auto"
@@ -437,6 +477,17 @@ export default function HomeworkPage() {
         </div>
       </Card>
 
+      {!busy && error && (
+        <Card className="mt-5 border-red-500/30 bg-red-500/5 p-5">
+          <p className="text-sm font-bold text-red-600 dark:text-red-400">{error}</p>
+          {errorDetail && (
+            <p className="mt-2 break-words rounded-lg bg-background/70 px-3 py-2 font-mono text-[11px] leading-relaxed text-muted-fg">
+              {errorDetail}
+            </p>
+          )}
+        </Card>
+      )}
+
       {busy && (
         <Card className="mt-5 p-6">
           <div className="flex items-center gap-3 text-sm font-semibold text-muted-fg">
@@ -467,7 +518,7 @@ export default function HomeworkPage() {
         </Card>
       )}
 
-      {!busy && !answer && (
+      {!busy && !answer && !error && (
         <Card className="mt-5 border-dashed p-8 text-center">
           <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-primary/10 text-primary">
             <Lightbulb className="h-5 w-5" />
