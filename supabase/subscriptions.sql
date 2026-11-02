@@ -9,6 +9,9 @@ alter table public.profiles
   add column if not exists subscription_ends_at timestamptz;
 alter table public.profiles
   add column if not exists waffo_order_id text;
+-- Used by the Waffo webhook after every entitlement change.
+alter table public.profiles
+  add column if not exists updated_at timestamptz default now();
 
 -- New users start their 1-day free trial automatically at signup.
 create or replace function public.set_trial_on_signup()
@@ -37,5 +40,19 @@ update public.profiles
  where trial_ends_at is null
     or subscription_status is null;
 
--- Optional: stall re-kick — no-op for rows already set.
+-- Client access is limited to the user's own profile row. Subscription fields
+-- are written only by the webhook with the service role (which bypasses RLS),
+-- so no UPDATE policy is created here.
 alter table public.profiles enable row level security;
+
+drop policy if exists "profiles_select_own" on public.profiles;
+create policy "profiles_select_own" on public.profiles
+  for select using (auth.uid() = id);
+
+drop policy if exists "profiles_insert_own" on public.profiles;
+create policy "profiles_insert_own" on public.profiles
+  for insert with check (auth.uid() = id);
+
+-- Webhook lookups: by user id (primary) and email (fallback for old checkouts).
+create index if not exists profiles_email_idx on public.profiles (email);
+create index if not exists profiles_waffo_order_id_idx on public.profiles (waffo_order_id);

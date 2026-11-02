@@ -15,5 +15,10 @@ export function getWaffoClient(): WaffoPancake | null {
   return cached;
 }
 
-/** Waffo subscription Product ID (PROD_xxx) for the $4.99/month plan with 1-day trial. */
-export const WAFFO_PRODUCT_ID = process.env.WAFFO_PRODUCT_ID || '';
+/** Waffo subscription Product ID (PROD_xxx) for the $4.99/month plan. */
+export const WAFFO_PRODUCT_ID = (process.env.WAFFO_PRODUCT_ID || '').trim();
+
+/** Store ID (STO_xxx) — used by the customer portal and webhook store check. */
+export const WAFFO_STORE_ID = (process.env.WAFFO_STORE_ID || '').trim();
+
+export const WAFFO_CURRENCY = 'USD';

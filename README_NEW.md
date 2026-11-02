@@ -45,9 +45,72 @@ The homework solver requires `OPENROUTER_API_KEY`. Without it the page still loa
 
 ### 3. Set up Supabase
 
-Create a new Supabase project and run the SQL from the README to create tables.
+Create a new Supabase project and run the SQL from the README to create tables. Then run `supabase/subscriptions.sql` once in the SQL editor — it adds the subscription columns, the signup-trial trigger, and the webhook indexes.
 
-### 4. Run the development server
+### 4. Set up Waffo payments
+
+The integration uses **`@waffo/pancake-ts`** for checkout, the customer portal, webhook verification, and one-time account provisioning. You do not need to create the product or webhook by hand.
+
+1. Copy your **Merchant ID** and **Private Key** from *Dashboard → Settings → Developers* into `.env.local` (and your host's environment variables):
+
+```bash
+WAFFO_MERCHANT_ID=MER_...
+WAFFO_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+SUPABASE_SERVICE_ROLE_KEY=...
+# Public site origin used for the checkout return URL and webhook setup
+NEXT_PUBLIC_APP_URL=https://YOUR_DOMAIN
+```
+
+2. Provision the product and webhook with the SDK:
+
+```bash
+npm run waffo:setup
+```
+
+The script finds or creates the **$4.99 USD / monthly** subscription product, publishes it, and registers `https://YOUR_DOMAIN/api/webhooks/waffo`. It is safe to run more than once: it reuses an existing product/webhook instead of creating duplicates. It prints the `WAFFO_STORE_ID` and `WAFFO_PRODUCT_ID` values to add to your environment.
+
+Useful options:
+
+```bash
+# Register the test-mode webhook while using a Waffo test key
+npm run waffo:setup -- --test
+
+# Explicit store/product/webhook URL
+npm run waffo:setup -- --store STO_... --product PROD_... --url https://YOUR_DOMAIN/api/webhooks/waffo
+
+# Retry publishing an existing product
+npm run waffo:setup -- --publish
+
+# Skip publishing or webhook registration
+npm run waffo:setup -- --no-publish --no-webhook
+```
+
+3. Verify the final configuration:
+
+```bash
+npm run waffo:check
+```
+
+It lists every store, subscription product, webhook, and the exact environment values.
+
+4. Deploy, open **Pricing**, and start a checkout. Checkout is created in **authenticated mode** with `buyerIdentity` set to the Supabase user id, so the webhook credits the right profile even if the customer edits their email on Waffo's page. The webhook also falls back to the email for older anonymous orders.
+
+The 1-day trial is granted in-app at signup, so checkout deliberately sends `withTrial: false` and starts the paid plan — do not enable a second trial on the Waffo product. The webhook endpoint handles:
+
+- `order.completed`
+- `subscription.activated`, `subscription.renewed`, `subscription.recovered`, `subscription.plan_changed`
+- `subscription.payment_succeeded`, `subscription.canceling`, `subscription.uncanceled`
+- `subscription.past_due`, `subscription.canceled`
+- `refund.succeeded`
+
+Notes:
+
+- `WAFFO_PRIVATE_KEY` may be stored with literal `\n` sequences; the server normalizes them.
+- `WAFFO_STORE_ID` is required in production: the webhook rejects signed events that belong to a different store, and the **Manage subscription** item opens Waffo's signed customer portal with it.
+- Test the full flow with a Waffo **test** API key before switching to the production key. The webhook verifies both test and production signatures automatically.
+- To provision a store too (only when the merchant has none), run `npm run waffo:setup -- --create-store`.
+
+### 5. Run the development server
 
 ```bash
 npm run dev

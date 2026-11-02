@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Check, Sparkles, Mail, Clock3 } from 'lucide-react';
+import { Check, Mail, Clock3 } from 'lucide-react';
 import { Logo } from '@/components/ui';
+import { CheckoutCta } from '@/components/checkout-cta';
 
 export const metadata: Metadata = {
   title: 'Pricing — Easier',
@@ -110,13 +111,7 @@ export default function PricingPage() {
               ))}
             </ul>
 
-            <Link
-              href="/signup"
-              className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-linear-to-r from-primary to-[var(--primary-2)] py-3 text-sm font-bold text-white shadow-[0_4px_14px_rgba(99,102,241,.35)] transition hover:-translate-y-px hover:shadow-[0_6px_20px_rgba(99,102,241,.45)]"
-            >
-              <Sparkles className="h-4 w-4" />
-              Start your 1-day free trial
-            </Link>
+            <CheckoutCta className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-linear-to-r from-primary to-[var(--primary-2)] py-3 text-sm font-bold text-white shadow-[0_4px_14px_rgba(99,102,241,.35)] transition hover:-translate-y-px hover:shadow-[0_6px_20px_rgba(99,102,241,.45)] disabled:cursor-wait disabled:opacity-80" />
           </div>
         </div>
 
