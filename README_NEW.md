@@ -110,6 +110,14 @@ Notes:
 - Test the full flow with a Waffo **test** API key before switching to the production key. The webhook verifies both test and production signatures automatically.
 - To provision a store too (only when the merchant has none), run `npm run waffo:setup -- --create-store`.
 
+#### Checkout says "Payments are being configured on our side"
+
+This message comes from `/api/subscribe` before Waffo is called. It means `WAFFO_MERCHANT_ID`, `WAFFO_PRIVATE_KEY`, or `WAFFO_PRODUCT_ID` is empty in the running process.
+
+- **Local:** add the values to `.env.local` and restart `npm run dev`.
+- **Vercel/other host:** add them to the project's environment variables for the correct environment, then redeploy — existing deployments do not pick up new variables.
+- Run `npm run waffo:check`. If it still fails, the server log now names the exact missing variable.
+
 ### 5. Run the development server
 
 ```bash

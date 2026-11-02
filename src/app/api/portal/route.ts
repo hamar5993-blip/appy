@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { WaffoPancakeError } from '@waffo/pancake-ts';
-import { getWaffoClient, WAFFO_STORE_ID } from '@/lib/waffo';
+import { getMissingWaffoConfig, getWaffoClient, WAFFO_STORE_ID } from '@/lib/waffo';
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,10 +25,15 @@ export async function POST(req: NextRequest) {
     }
 
     const client = getWaffoClient();
-    if (!client || !WAFFO_STORE_ID) {
-      console.error('[portal] Waffo portal is not configured (missing WAFFO_MERCHANT_ID / WAFFO_PRIVATE_KEY / WAFFO_STORE_ID)');
+    const missing = getMissingWaffoConfig({ product: false, store: true });
+    if (!client || missing.length) {
+      console.error(`[portal] Waffo portal is not configured. Missing: ${missing.join(', ') || 'unknown'}`);
       return NextResponse.json(
-        { error: 'Subscription management is not configured yet.', code: 'not_configured' },
+        {
+          error: 'Subscription management is not configured yet.',
+          code: 'not_configured',
+          ...(process.env.NODE_ENV !== 'production' ? { missing } : {}),
+        },
         { status: 503 }
       );
     }

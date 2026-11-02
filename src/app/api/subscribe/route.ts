@@ -8,7 +8,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { WaffoPancakeError } from '@waffo/pancake-ts';
-import { getWaffoClient, WAFFO_CURRENCY, WAFFO_PRODUCT_ID } from '@/lib/waffo';
+import {
+  getMissingWaffoConfig,
+  getWaffoClient,
+  WAFFO_CURRENCY,
+  WAFFO_PRODUCT_ID,
+} from '@/lib/waffo';
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,10 +33,18 @@ export async function POST(req: NextRequest) {
     }
 
     const client = getWaffoClient();
-    if (!client || !WAFFO_PRODUCT_ID) {
-      console.error('[subscribe] Waffo is not configured (missing WAFFO_MERCHANT_ID / WAFFO_PRIVATE_KEY / WAFFO_PRODUCT_ID)');
+    const missing = getMissingWaffoConfig();
+    if (!client || missing.length) {
+      console.error(`[subscribe] Waffo is not configured. Missing: ${missing.join(', ') || 'unknown'}`);
+      const isDev = process.env.NODE_ENV !== 'production';
       return NextResponse.json(
-        { error: 'Payments are being configured on our side. Please try again soon.', code: 'not_configured' },
+        {
+          error: isDev
+            ? `Payments are not configured. Add ${missing.join(', ')} to .env.local and restart the dev server.`
+            : 'Payments are being configured on our side. Please try again soon.',
+          code: 'not_configured',
+          ...(isDev ? { missing } : {}),
+        },
         { status: 503 }
       );
     }
