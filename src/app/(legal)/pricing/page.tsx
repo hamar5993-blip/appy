@@ -91,9 +91,9 @@ export default function PricingPage() {
               1-day free trial included
             </span>
             <h2 className="mt-2 text-lg font-extrabold">{PLAN.name}</h2>
-            <div className="mt-3 flex items-end gap-2">
+            <div className="mt-3 flex flex-nowrap items-end gap-2 whitespace-nowrap">
               <span className="bg-linear-to-r from-primary to-[var(--primary-2)] bg-clip-text text-5xl font-extrabold tracking-tight text-transparent">{PLAN.price}</span>
-              <span className="pb-1.5 text-sm font-semibold text-muted-fg">{PLAN.cycle}</span>
+              <span className="shrink-0 pb-1.5 text-sm font-semibold text-muted-fg">{PLAN.cycle}</span>
             </div>
             <p className="mt-2 text-[13px] text-muted-fg">
               {PLAN.trial}. <strong className="font-bold text-text">You pay $4.99 only after the trial day ends.</strong> Cancel before it ends and you are never charged;{" "}
