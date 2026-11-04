@@ -1,5 +1,14 @@
--- Subscription columns for profiles (Waffo, $4.99/month after a 1-day free trial).
--- Run once in the Supabase SQL editor.
+-- Waffo billing schema + signup repair (run the WHOLE file in the Supabase SQL
+-- editor; it is idempotent and safe to run again at any time).
+--
+-- Fixes two problems:
+--   • "Database error saving new user": GoTrue runs every user-created trigger
+--     on auth.users inside the signup transaction, so one broken trigger aborts
+--     every signup. We remove them all and install a working handle_new_user.
+--   • Subscription state never appears in Supabase: the subscription columns on
+--     public.profiles were missing. The webhook writes into these columns.
+
+-- 1) Subscription columns on profiles ---------------------------------------
 
 alter table public.profiles
   add column if not exists subscription_status text default 'trialing';
@@ -9,9 +18,59 @@ alter table public.profiles
   add column if not exists subscription_ends_at timestamptz;
 alter table public.profiles
   add column if not exists waffo_order_id text;
--- Used by the Waffo webhook after every entitlement change.
 alter table public.profiles
   add column if not exists updated_at timestamptz default now();
+
+-- 2) Repair signup: replace every trigger on auth.users ---------------------
+
+do $$
+declare
+  trg record;
+begin
+  for trg in
+    select distinct t.tgname
+    from pg_trigger t
+    join pg_class c on c.oid = t.tgrelid
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'auth'
+      and c.relname = 'users'
+      and not t.tgisinternal
+  loop
+    execute format('drop trigger if exists %I on auth.users', trg.tgname);
+    raise notice 'removed trigger % on auth.users', trg.tgname;
+  end loop;
+end $$;
+
+-- Create the profile row when Supabase Auth creates the user. Any failure is
+-- logged but never aborts the signup transaction (the signed-up page also
+-- upserts the profile as a backstop).
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.profiles (id, email, name)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data ->> 'name', split_part(new.email, '@', 1), 'Student')
+  )
+  on conflict (id) do nothing;
+  return new;
+exception when others then
+  raise warning 'handle_new_user: could not create profile for % (%)', new.id, sqlerrm;
+  return new;
+end;
+$$;
+
+drop trigger if exists handle_new_user on auth.users;
+create trigger handle_new_user
+  after insert on auth.users
+  for each row
+  execute function public.handle_new_user();
+
+-- 3) Trial trigger on profiles (covers client-side inserts as well) ---------
 
 -- New users start their 1-day free trial automatically at signup.
 create or replace function public.set_trial_on_signup()
@@ -39,6 +98,8 @@ update public.profiles
        trial_ends_at = coalesce(trial_ends_at, created_at + interval '1 day')
  where trial_ends_at is null
     or subscription_status is null;
+
+-- 4) RLS + indexes ----------------------------------------------------------
 
 -- Client access is limited to the user's own profile row. Subscription fields
 -- are written only by the webhook with the service role (which bypasses RLS),

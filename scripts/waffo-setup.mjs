@@ -117,7 +117,7 @@ function normaliseUrl(value) {
 
 async function readWebhooks(storeId) {
   const data = await query(
-    `query ($id: ID!) {
+    `query ($id: String!) {
       store(id: $id) {
         storeWebhooks { id channel url events testMode }
       }

@@ -38,16 +38,20 @@ export default function SignupPage() {
       if (error) throw error;
 
       if (data.user) {
-        await supabase.from('profiles').insert({
-          id: data.user.id,
-          email: data.user.email,
-          name,
-        });
+        /* The handle_new_user trigger (see supabase/subscriptions.sql) usually
+           creates the profile already — this upsert is a backstop and never
+           fails the signup. */
+        await supabase
+          .from('profiles')
+          .upsert(
+            { id: data.user.id, email: data.user.email ?? email.trim().toLowerCase(), name },
+            { onConflict: 'id', ignoreDuplicates: true }
+          );
       }
       toast.success('Account created — welcome to Easier!');
       router.push('/library');
-    } catch (error: any) {
-      toast.error(error.message || 'Error creating account');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error creating account');
     } finally {
       setLoading(false);
     }

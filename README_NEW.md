@@ -51,11 +51,12 @@ Create a new Supabase project and run the SQL from the README to create tables. 
 
 The integration uses **`@waffo/pancake-ts`** for checkout, the customer portal, webhook verification, and one-time account provisioning. You do not need to create the product or webhook by hand.
 
-1. Copy your **Merchant ID** and **Private Key** from *Dashboard → Settings → Developers* into `.env.local` (and your host's environment variables):
+1. Copy your **Merchant ID** and **Private Key** from *Dashboard → API & Development → "Create an API Key"* (the Merchant ID is shown above the key list), and your **Store ID** from *Dashboard → Settings → Store Profile*, into `.env.local` (and your host's environment variables):
 
 ```bash
 WAFFO_MERCHANT_ID=MER_...
 WAFFO_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+WAFFO_STORE_ID=STO_...
 SUPABASE_SERVICE_ROLE_KEY=...
 # Public site origin used for the checkout return URL and webhook setup
 NEXT_PUBLIC_APP_URL=https://YOUR_DOMAIN

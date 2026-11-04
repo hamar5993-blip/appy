@@ -88,7 +88,7 @@ try {
 
     try {
       const { store: detail } = await query(
-        `query ($id: ID!) {
+        `query ($id: String!) {
           store(id: $id) {
             storeWebhooks { id channel url events testMode }
           }
