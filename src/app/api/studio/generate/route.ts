@@ -21,6 +21,17 @@ export const maxDuration = 30;
 
 const ARABIC_RE = /[\u0600-\u06FF]/;
 
+/* Header values must be ByteStrings (latin-1). An Arabic title placed raw in
+   filename= makes undici throw "Cannot convert argument to a ByteString…".
+   Send an ASCII fallback plus the RFC 5987 filename* so the real (Arabic)
+   name still arrives intact. */
+function contentDisposition(creation: Creation): string {
+  const ext = creation.kind === 'docx' ? 'docx' : creation.kind === 'pptx' ? 'pptx' : 'svg';
+  const name = safeFileName(creation.title, ext);
+  const asciiFallback = name.replace(/[^\x20-\x7E]/g, "_").replace(/"/g, "'");
+  return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(name)}`;
+}
+
 function xmlEscape(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -77,10 +88,7 @@ export async function POST(req: NextRequest) {
             : creation.kind === 'pptx'
               ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
               : 'image/svg+xml',
-        'Content-Disposition': `attachment; filename="${safeFileName(
-          creation.title,
-          creation.kind === 'docx' ? 'docx' : creation.kind === 'pptx' ? 'pptx' : 'svg'
-        )}"`,
+        'Content-Disposition': contentDisposition(creation),
         'Cache-Control': 'no-store',
       },
     });
