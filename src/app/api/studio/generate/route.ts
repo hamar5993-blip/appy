@@ -14,6 +14,7 @@ import {
   BorderStyle,
 } from 'docx';
 import PptxGenJS from 'pptxgenjs';
+import JSZip from 'jszip';
 import { safeFileName, type Creation } from '@/lib/studio';
 
 export const maxDuration = 30;
@@ -208,7 +209,9 @@ async function buildPptx(creation: Extract<Creation, { kind: 'pptx' }>, isRtl: b
     rtlMode: isRtl,
     align: isRtl ? ('right' as const) : ('left' as const),
     valign: 'top' as const,
-    lang: creation.lang,
+    /* ST_Lang wants a full language tag — plain "ar" gets written into rPr and
+       some Office builds treat it as invalid. */
+    lang: isRtl ? ('ar-SA' as const) : ('en-US' as const),
   });
 
   /* Title slide */
@@ -221,12 +224,12 @@ async function buildPptx(creation: Extract<Creation, { kind: 'pptx' }>, isRtl: b
   title.addText(creation.title, {
     x: 0.6, y: 1.9, w: 8.8, h: 2.2,
     fontSize: 40, bold: true, color: 'FFFFFF', fontFace: 'Arial',
-    rtlMode: isRtl, align: 'center', valign: 'middle', lang: creation.lang,
+    rtlMode: isRtl, align: 'center', valign: 'middle', lang: isRtl ? 'ar-SA' : 'en-US',
   });
   title.addText('Easier AI Studio', {
     x: 0.6, y: 5.25, w: 8.8, h: 0.4,
     fontSize: 12, color: '94A3B8', fontFace: 'Arial',
-    rtlMode: isRtl, align: 'center', lang: creation.lang,
+    rtlMode: isRtl, align: 'center', lang: 'en-US',
   });
 
   const hasTitleSlide = (creation.slides?.[0]?.bullets ?? []).length === 0
@@ -252,8 +255,14 @@ async function buildPptx(creation: Extract<Creation, { kind: 'pptx' }>, isRtl: b
       });
     }
     if ((slideDef.bullets ?? []).length) {
+      /* breakLine makes every bullet its own <a:p> paragraph. Without it
+         pptxgenjs crams all runs into ONE paragraph and re-emits a <a:pPr>
+         before each run — schema-invalid XML that PowerPoint refuses to open. */
       slide.addText(
-        (slideDef.bullets ?? []).map((b) => ({ text: `•  ${b}`, options: { ...textOpts(18, false, '374151'), bullet: false } })),
+        (slideDef.bullets ?? []).map((b) => ({
+          text: `•  ${b}`,
+          options: { ...textOpts(18, false, '374151'), bullet: false, breakLine: true },
+        })),
         { x: 0.7, y: 1.7, w: 8.6, h: 3.6, lineSpacingMultiple: 1.35, ...textOpts(18, false, '374151') }
       );
     }
@@ -262,13 +271,32 @@ async function buildPptx(creation: Extract<Creation, { kind: 'pptx' }>, isRtl: b
     }
     slide.addText(String(slideIndex), {
       x: 9.2, y: 5.1, w: 0.6, h: 0.4,
-      fontSize: 10, color: '9CA3AF', fontFace: 'Arial', align: 'right', lang: 'en',
+      fontSize: 10, color: '9CA3AF', fontFace: 'Arial', align: 'right', lang: 'en-US',
     });
   }
 
-  return (await pptx.write({ outputType: 'nodebuffer' })) as Buffer;
+  const raw = (await pptx.write({ outputType: 'nodebuffer' })) as Buffer;
+  return await sanitizePptxPackage(raw);
 }
 
+/* pptxgenjs 4.0.1 writes an <Override> for /ppt/slideMasters/slideMasterN.xml
+   for EVERY slide, but only ever emits slideMaster1.xml. Overrides pointing at
+   missing parts make PowerPoint reject the whole package ("needs repair").
+   Strip the bogus ones before delivering the file. */
+async function sanitizePptxPackage(raw: Buffer): Promise<Buffer> {
+  const zip = await JSZip.loadAsync(raw);
+  const entry = zip.file('[Content_Types].xml');
+  if (!entry) return raw;
+  const ct = await entry.async('string');
+  const cleaned = ct.replace(
+    /<Override PartName="\/ppt\/slideMasters\/slideMaster(\d+)\.xml"[^>]*\/>/g,
+    (match, n: string) => (Number(n) <= 1 ? match : '')
+  );
+  if (cleaned === ct) return raw;
+  zip.file('[Content_Types].xml', cleaned);
+  const out = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+  return out as Buffer;
+}
 /* ---------------- Canva-style poster (.svg) ---------------- */
 
 function buildDesignSvg(creation: Extract<Creation, { kind: 'design' }>) {
@@ -278,27 +306,112 @@ function buildDesignSvg(creation: Extract<Creation, { kind: 'design' }>) {
   const accent = creation.accent || '#818cf8';
   const rtl = creation.lang === 'ar';
   const anchor = rtl ? 'end' : 'start';
-  const alignX = rtl ? 'right' : 'left';
   const pad = 90;
+  const inset = 24;
+  const startX = rtl ? W - pad - inset : pad + inset;
+  const contentWidth = W - pad * 2 - inset * 2;
+  const font = `Arial, 'Segoe UI', Tahoma, sans-serif`;
 
-  /* Headline font size scales down as the text grows, so long titles still fit. */
-  const headlineSize = creation.headline.length > 60 ? 58 : creation.headline.length > 34 ? 74 : 92;
+  /* Rough per-character width (Arial). SVG never auto-wraps <text>, so long
+     lines rendered past the canvas edge and were silently clipped ("part of
+     the text missing"). Wrap everything into lines that fit the frame. */
+  const estWidth = (s: string, size: number): number => s.length * size * 0.56;
 
-  const bullets = (creation.bullets ?? []).slice(0, 4);
-  const contentStart = 620 + (creation.subline ? 90 : 0);
-  const rowGap = 74;
-  const rows: string[] = [];
-  for (let i = 0; i < bullets.length; i += 1) {
-    const y = contentStart + i * rowGap;
-    rows.push(
-      `${rtl
-        ? `<circle cx="${W - pad + 14}" cy="${y - 11}" r="7" fill="${accent}"/>`
-        : `<circle cx="${pad + 7}" cy="${y - 11}" r="7" fill="${accent}"/>`}
-      <text x="${alignX === 'right' ? W - pad : pad}" y="${y + 34}" text-anchor="${anchor}"
-        font-family="Arial, 'Segoe UI', Tahoma, sans-serif" font-size="42" font-weight="600"
-        fill="#E2E8F0" direction="${rtl ? 'rtl' : 'ltr'}">${xmlEscape(bullets[i])}</text>`
-    );
+  function wrap(text: string, size: number, maxWidth: number): string[] {
+    const words = text.split(/\s+/).filter(Boolean);
+    const lines: string[] = [];
+    let current = '';
+    for (const word of words) {
+      const next = current ? `${current} ${word}` : word;
+      if (current && estWidth(next, size) > maxWidth) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = next;
+      }
+    }
+    if (current) lines.push(current);
+    return lines;
   }
+
+  /* Largest size whose wrapped text fits within maxLines. */
+  function fit(text: string, baseSize: number, maxWidth: number, maxLines: number, minSize: number): { size: number; lines: string[] } {
+    const clean = text.replace(/\s+/g, ' ').trim();
+    let size = baseSize;
+    let lines = wrap(clean, size, maxWidth);
+    while (size > minSize && lines.length > maxLines) {
+      size = Math.round(size * 0.85);
+      lines = wrap(clean, size, maxWidth);
+    }
+    return { size, lines: lines.slice(0, maxLines) };
+  }
+
+  const headline = fit(
+    creation.headline,
+    creation.headline.length > 60 ? 58 : creation.headline.length > 34 ? 74 : 92,
+    contentWidth, 2, 44
+  );
+  const subline = creation.subline
+    ? fit(creation.subline, 40, contentWidth, 2, 28)
+    : null;
+  const bullets = (creation.bullets ?? [])
+    .slice(0, 5)
+    .map((b) => b.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .map((b) => fit(b, 40, contentWidth - 40, 2, 26));
+
+  /* ---- flowing layout ---- */
+  const parts: string[] = [];
+
+  let y = pad + 280;
+  const headlineLH = Math.round(headline.size * 1.18);
+  for (const line of headline.lines) {
+    parts.push(
+      `<text x="${startX}" y="${y}" text-anchor="${anchor}"
+        font-family="${font}" font-size="${headline.size}" font-weight="900"
+        fill="#FFFFFF" direction="${rtl ? 'rtl' : 'ltr'}">${xmlEscape(line)}</text>`
+    );
+    y += headlineLH;
+  }
+
+  if (subline) {
+    const subLH = Math.round(subline.size * 1.3);
+    y += 16;
+    for (const line of subline.lines) {
+      parts.push(
+        `<text x="${startX}" y="${y}" text-anchor="${anchor}"
+          font-family="${font}" font-size="${subline.size}" font-weight="500"
+          fill="#CBD5E1" direction="${rtl ? 'rtl' : 'ltr'}">${xmlEscape(line)}</text>`
+      );
+      y += subLH;
+    }
+  }
+
+  /* Bullets start at least at mid-poster so the layout breathes. */
+  y = Math.max(y + 46, 640);
+
+  for (const bullet of bullets) {
+    const bulletLH = Math.round(bullet.size * 1.28);
+    const firstY = y + bullet.size;
+    /* Keep every bullet fully above the footer zone, or drop it — never let
+       text collide with the frame/footer. */
+    if (firstY > H - pad - 150) break;
+    parts.push(
+      `<circle cx="${rtl ? startX + 16 : startX - 16}" cy="${firstY - bullet.size * 0.42}" r="7" fill="${accent}"/>`
+    );
+    for (let i = 0; i < bullet.lines.length; i += 1) {
+      parts.push(
+        `<text x="${startX}" y="${firstY + i * bulletLH}" text-anchor="${anchor}"
+          font-family="${font}" font-size="${bullet.size}" font-weight="600"
+          fill="#E2E8F0" direction="${rtl ? 'rtl' : 'ltr'}">${xmlEscape(bullet.lines[i])}</text>`
+      );
+    }
+    y += bulletLH * bullet.lines.length + Math.round(bullet.size * 0.55);
+  }
+
+  /* The footer rule sits right below the content, but never above mid-poster. */
+  const footerRuleY = Math.max(y + 30, H - pad - 110);
+  const footerY = Math.min(footerRuleY + 62, H - pad - 24);
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
@@ -316,20 +429,13 @@ function buildDesignSvg(creation: Extract<Creation, { kind: 'design' }>) {
   <rect width="${W}" height="${H}" fill="url(#glow)"/>
   <rect x="${pad}" y="${pad}" width="${W - pad * 2}" height="${H - pad * 2}"
     fill="none" stroke="#FFFFFF22" stroke-width="2" rx="28"/>
-  <text x="${pad}" y="${pad + 140}" font-family="Arial, 'Segoe UI', Tahoma, sans-serif"
-    font-size="26" font-weight="800" letter-spacing="6" fill="${accent}">EASIER</text>
-  <circle cx="${alignX === 'right' ? pad + 16 : W - pad - 16}" cy="${pad + 130}" r="26" fill="none" stroke="${accent}" stroke-width="5"/>
-  <text x="${pad}" y="${pad + 300}" text-anchor="start"
-    font-family="Arial, 'Segoe UI', Tahoma, sans-serif" font-size="${headlineSize}" font-weight="900"
-    fill="#FFFFFF" direction="${rtl ? 'rtl' : 'ltr'}">${xmlEscape(creation.headline)}</text>
-  ${creation.subline
-    ? `<text x="${pad}" y="${pad + 300 + headlineSize + 34}" font-family="Arial, 'Segoe UI', Tahoma, sans-serif"
-      font-size="40" font-weight="500" fill="#CBD5E1" direction="${rtl ? 'rtl' : 'ltr'}">${xmlEscape(creation.subline)}</text>`
-    : ''}
-  ${rows.join('\n  ')}
-  <line x1="${pad}" y1="${H - pad - 110}" x2="${W - pad}" y2="${H - pad - 110}" stroke="#FFFFFF26" stroke-width="2"/>
-  <text x="${rtl ? W - pad : pad}" y="${H - pad - 50}" text-anchor="${anchor}"
-    font-family="Arial, 'Segoe UI', Tahoma, sans-serif" font-size="30" font-weight="600"
+  <text x="${rtl ? W - pad - inset : pad + inset}" y="${pad + 140}" font-family="${font}"
+    font-size="26" font-weight="800" letter-spacing="6" fill="${accent}" text-anchor="${anchor}" direction="${rtl ? 'rtl' : 'ltr'}">EASIER</text>
+  <circle cx="${rtl ? pad + 20 : W - pad - 20}" cy="${pad + 130}" r="26" fill="none" stroke="${accent}" stroke-width="5"/>
+  ${parts.join('\n  ')}
+  <line x1="${pad}" y1="${footerRuleY}" x2="${W - pad}" y2="${footerRuleY}" stroke="#FFFFFF26" stroke-width="2"/>
+  <text x="${startX}" y="${footerY}" text-anchor="${anchor}"
+    font-family="${font}" font-size="30" font-weight="600"
     fill="#94A3B8" direction="${rtl ? 'rtl' : 'ltr'}">${xmlEscape(creation.tagline || 'Made with Easier')}</text>
 </svg>`;
   return Buffer.from(svg, 'utf8');

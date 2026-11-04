@@ -169,7 +169,10 @@ function validateCreation(raw: unknown): Creation | null {
     headline,
     subline: str(obj.subline, 200) || undefined,
     bullets: Array.isArray(obj.bullets)
-      ? obj.bullets.filter((b): b is string => typeof b === 'string').slice(0, 5)
+      ? obj.bullets
+          .filter((b): b is string => typeof b === 'string')
+          .map((b) => b.slice(0, 240))
+          .slice(0, 5)
       : [],
     tagline: str(obj.tagline, 120) || 'Made with Easier',
   };
