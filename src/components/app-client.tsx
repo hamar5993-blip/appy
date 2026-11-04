@@ -9,7 +9,7 @@ import { useSettings } from '@/components/settings';
 import { toast } from 'sonner';
 import { Spinner, Logo, Button } from '@/components/ui';
 import type { User } from '@/types';
-import { Moon, Sun, LogOut, ChevronDown, Plus, Mail, Sparkles, Volume2, BrainCircuit, BookOpen, Clock3, Lightbulb, CreditCard } from 'lucide-react';
+import { Moon, Sun, LogOut, ChevronDown, Plus, Mail, Sparkles, Volume2, BrainCircuit, BookOpen, Clock3, Lightbulb, CreditCard, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 function Header({ onGate }: { onGate?: (locked: boolean) => void }) {
@@ -147,6 +147,19 @@ function Header({ onGate }: { onGate?: (locked: boolean) => void }) {
           >
             {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
           </button>
+
+          <Link
+            href="/studio"
+            className={cn(
+              'inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-[13px] font-bold transition sm:h-auto sm:px-4 sm:py-2',
+              pathname === '/studio'
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-edge bg-surface text-muted-fg hover:border-primary hover:text-primary'
+            )}
+          >
+            <MessageSquare className="h-4 w-4" />
+            <span className="hidden sm:inline">{t.studio}</span>
+          </Link>
 
           <Link
             href="/homework"
