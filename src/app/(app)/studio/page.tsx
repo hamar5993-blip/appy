@@ -252,7 +252,10 @@ function CreationCard({ creation }: { creation: Creation }) {
         body: JSON.stringify({ creation }),
       });
       if (!res.ok) {
-        toast.error(t.studioGenFailed);
+        /* Surface the real reason: 401 = expired session, otherwise show the
+           route's error message instead of a generic failure. */
+        const detail = await res.json().catch(() => null);
+        toast.error(res.status === 401 ? t.studioSignIn : String(detail?.error || t.studioGenFailed));
         return;
       }
       if (isDesign && wantPng) {

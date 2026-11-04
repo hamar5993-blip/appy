@@ -284,6 +284,7 @@ async function buildPptx(creation: Extract<Creation, { kind: 'pptx' }>, isRtl: b
    missing parts make PowerPoint reject the whole package ("needs repair").
    Strip the bogus ones before delivering the file. */
 async function sanitizePptxPackage(raw: Buffer): Promise<Buffer> {
+  try {
   const zip = await JSZip.loadAsync(raw);
   const entry = zip.file('[Content_Types].xml');
   if (!entry) return raw;
@@ -296,6 +297,10 @@ async function sanitizePptxPackage(raw: Buffer): Promise<Buffer> {
   zip.file('[Content_Types].xml', cleaned);
   const out = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
   return out as Buffer;
+  } catch (error) {
+    console.error('[studio-generate] pptx sanitize failed - delivering raw package:', error);
+    return raw;
+  }
 }
 /* ---------------- Canva-style poster (.svg) ---------------- */
 
