@@ -12,7 +12,8 @@ export const metadata: Metadata = {
 const PLAN = {
   name: 'Easier Pro — Monthly Subscription',
   price: '$4.99',
-  cycle: 'per month · recurring (auto-renews every month)',
+  cycle: 'per month',
+  cycleNote: 'Recurring — auto-renews every month',
   trial: '1-day free trial starts at signup — no payment is taken during the trial',
 } as const;
 
@@ -85,7 +86,7 @@ export default function PricingPage() {
             <dd>Anytime, no fees</dd>
           </dl>
 
-          <div className="relative rounded-3xl border-2 border-primary bg-surface p-7 shadow-[0_24px_60px_-20px_rgba(99,102,241,.35)]">
+          <div className="relative break-words rounded-3xl border-2 border-primary bg-surface p-7 shadow-[0_24px_60px_-20px_rgba(99,102,241,.35)]">
             <span className="absolute -top-3 start-6 inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-primary to-[var(--primary-2)] px-4 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white">
               <Clock3 className="h-3 w-3" />
               1-day free trial included
@@ -95,6 +96,7 @@ export default function PricingPage() {
               <span className="bg-linear-to-r from-primary to-[var(--primary-2)] bg-clip-text text-5xl font-extrabold tracking-tight text-transparent">{PLAN.price}</span>
               <span className="shrink-0 pb-1.5 text-sm font-semibold text-muted-fg">{PLAN.cycle}</span>
             </div>
+            <p className="mt-1 break-words text-[13px] font-semibold text-muted-fg">{PLAN.cycleNote}</p>
             <p className="mt-2 text-[13px] text-muted-fg">
               {PLAN.trial}. <strong className="font-bold text-text">You pay $4.99 only after the trial day ends.</strong> Cancel before it ends and you are never charged;{" "}
               <Link href="/terms" className="font-semibold text-primary hover:underline">full billing terms</Link>.
